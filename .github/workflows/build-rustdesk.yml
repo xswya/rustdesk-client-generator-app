@@ -117,7 +117,74 @@ jobs:
         
         echo "Flags de optimización configurados: CFLAGS=$CFLAGS, CXXFLAGS=$CXXFLAGS"
         
-        vcpkg install --triplet x64-windows-static
+        # SOLUCIÓN ROBUSTA PARA ERRORES 503 DE DESCARGA DE OPUS Y LIBVPX
+        # Configurar variables de entorno para mejorar descargas de vcpkg
+        export VCPKG_MAX_CONCURRENCY=4
+        export VCPKG_DOWNLOADS_RETRIES=5
+        export VCPKG_DOWNLOADS_TIMEOUT=120
+        export VCPKG_CURL_OPTIONS="--retry 5 --retry-delay 10 --connect-timeout 30"
+        
+        # Limpiar variables de proxy problemáticas que pueden causar errores 503
+        unset https_proxy HTTPS_PROXY http_proxy HTTP_PROXY || true
+        
+        echo "Variables de descarga configuradas:"
+        echo "VCPKG_MAX_CONCURRENCY=$VCPKG_MAX_CONCURRENCY"
+        echo "VCPKG_DOWNLOADS_RETRIES=$VCPKG_DOWNLOADS_RETRIES"
+        echo "VCPKG_DOWNLOADS_TIMEOUT=$VCPKG_DOWNLOADS_TIMEOUT"
+        
+        # Función de instalación con reintentos inteligentes
+        install_vcpkg_dependencies() {
+          local max_retries=5
+          local retry_delay=30
+          
+          for attempt in $(seq 1 $max_retries); do
+            echo "=== Intento $attempt de $max_retries para instalar dependencias vcpkg ==="
+            
+            # Verificar conectividad antes del intento
+            if ! curl -s --connect-timeout 10 https://github.com >/dev/null; then
+              echo "⚠️ Problema de conectividad detectado, esperando..."
+              sleep $retry_delay
+              continue
+            fi
+            
+            # Intentar instalación
+            if vcpkg install --triplet x64-windows-static; then
+              echo "✅ Dependencias instaladas correctamente en el intento $attempt"
+              return 0
+            fi
+            
+            echo "❌ Falló la instalación en el intento $attempt"
+            
+            # Si no es el último intento, limpiar caché y reintentar
+            if [ $attempt -lt $max_retries ]; then
+              echo "🧹 Limpiando caché de descargas y buildtrees problemáticos..."
+              
+              # Limpiar caché específico de opus y libvpx
+              rm -rf "$VCPKG_INSTALLATION_ROOT/buildtrees/opus" \
+                     "$VCPKG_INSTALLATION_ROOT/buildtrees/libvpx" \
+                     "$VCPKG_INSTALLATION_ROOT/downloads/opus"* \
+                     "$VCPKG_INSTALLATION_ROOT/downloads/libvpx"* \
+                     "$VCPKG_INSTALLATION_ROOT/downloads/_*opus*" \
+                     "$VCPKG_INSTALLATION_ROOT/downloads/_*libvpx*" 2>/dev/null || true
+              
+              echo "⏳ Esperando $retry_delay segundos antes del siguiente intento..."
+              sleep $retry_delay
+              
+              # Incrementar el delay para el siguiente intento
+              retry_delay=$((retry_delay + 15))
+            fi
+          done
+          
+          echo "💥 ERROR: No se pudieron instalar las dependencias tras $max_retries intentos"
+          echo "🔍 Diagnóstico final:"
+          echo "- Verificar conectividad a GitHub"
+          echo "- Posibles problemas de proxy o firewall"
+          echo "- Servidor de GitHub temporalmente no disponible"
+          return 1
+        }
+        
+        # Ejecutar instalación con reintentos
+        install_vcpkg_dependencies
         
         # Verificar que las dependencias se instalaron correctamente
         echo "Verificando instalación de dependencias..."
@@ -189,7 +256,7 @@ jobs:
         # Configurar variables específicas para linking estático
         $env:RUSTFLAGS = "-C target-feature=+crt-static"
         
-        # Solución para errores de headers no encontrados en magnum-opus y scrap
+        # SOLUCIÓN MEJORADA PARA ERRORES DE HEADERS NO ENCONTRADOS EN MAGNUM-OPUS Y SCRAP
         # Configuramos variables específicas para opus y vpx, y mejoramos bindgen
         # para que pueda encontrar todos los headers necesarios
         
@@ -197,29 +264,38 @@ jobs:
         $env:OPUS_INCLUDE_DIR = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\include"
         $env:OPUS_LIB_DIR = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\lib"
         $env:OPUS_STATIC = "1"
+        $env:OPUS_NO_PKG = "1"
+        
+        # Variables adicionales para magnum-opus
+        $env:DEP_OPUS_INCLUDE = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\include"
+        $env:DEP_OPUS_LIB = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\lib"
+        $env:DEP_OPUS_STATIC = "1"
         
         # Configurar variables específicas para scrap y headers de vpx
         $env:VPX_INCLUDE_DIR = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\include"
         $env:VPX_LIB_DIR = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\lib"
         $env:VPX_STATIC = "1"
+        $env:VPX_NO_PKG = "1"
         
         # Configurar bindgen con múltiples rutas de include
         $includeDir = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\include"
         $env:BINDGEN_EXTRA_CLANG_ARGS = "-I$includeDir -I$includeDir\opus -I$includeDir\vpx --sysroot=$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static"
         
-        # Variables adicionales para build scripts
-        $env:OPUS_NO_PKG = "1"
-        $env:VPX_NO_PKG = "1"
+        # Variables adicionales para build scripts y compatibilidad
         $env:CPPFLAGS = "-I$includeDir -I$includeDir\opus -I$includeDir\vpx"
         $env:LDFLAGS = "-L$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\lib"
         
-        # Configurar variables de entorno adicionales para bindgen
+        # Variables adicionales para bindgen y clang
         $env:LIBCLANG_INCLUDE_PATH = "$includeDir"
         $env:C_INCLUDE_PATH = "$includeDir"
         $env:CPLUS_INCLUDE_PATH = "$includeDir"
         
+        # Variables adicionales para compatibilidad con diferentes build scripts
+        $env:OPUS_LIBS = "-lopus"
+        $env:OPUS_CFLAGS = "-I$includeDir\opus"
+        
         # Verificar configuración de vcpkg
-        Write-Host "Configuración de vcpkg:"
+        Write-Host "=== Configuración de vcpkg ==="
         Write-Host "VCPKG_ROOT: $env:VCPKG_ROOT"
         Write-Host "VCPKG_DEFAULT_TRIPLET: $env:VCPKG_DEFAULT_TRIPLET"
         Write-Host "PKG_CONFIG_PATH: $env:PKG_CONFIG_PATH"
@@ -228,15 +304,16 @@ jobs:
         Write-Host "BINDGEN_EXTRA_CLANG_ARGS: $env:BINDGEN_EXTRA_CLANG_ARGS"
         
         # Verificar que los headers están disponibles
-        Write-Host "Verificando headers instalados:"
+        Write-Host "=== Verificando headers instalados ==="
         if (Test-Path "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\include") {
+          Write-Host "Directorio include encontrado, listando contenido:"
           Get-ChildItem "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\include" | Select-Object -First 20
         } else {
-          Write-Host "Include directory not found"
+          Write-Host "❌ Directorio include no encontrado"
         }
         
         # Verificar específicamente los headers de opus que necesita magnum-opus
-        Write-Host "Verificando headers específicos de opus:"
+        Write-Host "=== Verificando headers específicos de opus ==="
         $opusHeaders = @(
           "opus\opus.h",
           "opus\opus_multistream.h", 
@@ -254,7 +331,7 @@ jobs:
         }
         
         # Verificar específicamente los headers de vpx que necesita scrap
-        Write-Host "Verificando headers específicos de vpx:"
+        Write-Host "=== Verificando headers específicos de vpx ==="
         $vpxHeaders = @(
           "vpx\vp8.h",
           "vpx\vp8cx.h",
@@ -273,11 +350,26 @@ jobs:
           }
         }
         
-        Write-Host "Iniciando compilación de RustDesk..."
-        if ("${{ inputs.enable_debug }}" -eq "true") {
-          cargo build --release --features inline
+        # Verificar librerías instaladas
+        Write-Host "=== Verificando librerías instaladas ==="
+        if (Test-Path "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\lib") {
+          Write-Host "Librerías encontradas:"
+          Get-ChildItem "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\lib" -Filter "*.lib" | Select-Object Name | ForEach-Object { Write-Host "  - $($_.Name)" }
         } else {
-          cargo build --release --features inline
+          Write-Host "❌ Directorio lib no encontrado"
+        }
+        
+        Write-Host "=== Iniciando compilación de RustDesk ==="
+        Write-Host "Modo debug habilitado: ${{ inputs.enable_debug }}"
+        
+        # Compilar con información verbosa para diagnóstico
+        $env:RUST_BACKTRACE = "1"
+        $env:RUST_LOG = "debug"
+        
+        if ("${{ inputs.enable_debug }}" -eq "true") {
+          cargo build --release --features inline --verbose
+        } else {
+          cargo build --release --features inline --verbose
         }
       shell: powershell
       
