@@ -12,11 +12,6 @@ on:
         required: true
         type: string
         default: 'rustdesk-custom'
-      version:
-        description: 'Version'
-        required: true
-        type: string
-        default: 'v1.0.0'
       rustdesk_branch:
         description: 'RustDesk branch'
         required: false
@@ -162,7 +157,7 @@ jobs:
         
         $nsisScript = @"
         !define PRODUCT_NAME "$($config.branding.PRODUCT_NAME)"
-        !define PRODUCT_VERSION "${{ inputs.version }}"
+        !define PRODUCT_VERSION "$($config.build.VERSION)"
         !define PRODUCT_PUBLISHER "$($config.branding.PRODUCT_NAME)"
         !define PRODUCT_WEB_SITE "https://rustdesk.com"
         !define PRODUCT_DIR_REGKEY "Software\Microsoft\Windows\CurrentVersion\App Paths\$executableName.exe"
@@ -221,7 +216,7 @@ jobs:
         $config = '${{ inputs.config_json }}' | ConvertFrom-Json
         $releaseInfo = @{
           executable_name = "${{ inputs.executable_name }}"
-          version = "${{ inputs.version }}"
+          version = $config.build.VERSION
           architecture = "${{ inputs.target_arch }}"
           platform = "windows"
           portable = "${{ inputs.enable_portable }}"
