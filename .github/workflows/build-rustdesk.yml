@@ -271,6 +271,36 @@ jobs:
         $env:DEP_OPUS_LIB = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\lib"
         $env:DEP_OPUS_STATIC = "1"
         
+        # SOLUCIÓN ESPECÍFICA PARA MAGNUM-OPUS: Crear estructura de directorios esperada
+        # magnum-opus busca opus/opus_multistream.h pero vcpkg instala directamente en include/
+        Write-Host "=== Configurando estructura de headers para magnum-opus ==="
+        $opusIncludeDir = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\include"
+        $opusSubDir = "$opusIncludeDir\opus"
+        
+        # Verificar si ya existe el subdirectorio opus
+        if (-not (Test-Path $opusSubDir)) {
+          Write-Host "Creando directorio opus en include..."
+          New-Item -ItemType Directory -Path $opusSubDir -Force
+        }
+        
+        # Copiar headers de opus al subdirectorio opus/ si no existen
+        $opusHeaders = @("opus.h", "opus_multistream.h", "opus_defines.h", "opus_types.h", "opus_custom.h")
+        foreach ($header in $opusHeaders) {
+          $sourceFile = "$opusIncludeDir\$header"
+          $destFile = "$opusSubDir\$header"
+          
+          if ((Test-Path $sourceFile) -and (-not (Test-Path $destFile))) {
+            Write-Host "Copiando $header a subdirectorio opus/"
+            Copy-Item $sourceFile $destFile
+          }
+        }
+        
+        # Variables adicionales específicas para magnum-opus build script
+        $env:OPUS_INCLUDE_PATH = $opusIncludeDir
+        $env:OPUS_LIB_PATH = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\lib"
+        $env:LIBOPUS_INCLUDE_DIR = $opusIncludeDir
+        $env:LIBOPUS_LIB_DIR = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\lib"
+        
         # Configurar variables específicas para scrap y headers de vpx
         $env:VPX_INCLUDE_DIR = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\include"
         $env:VPX_LIB_DIR = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\lib"
@@ -280,6 +310,10 @@ jobs:
         # Configurar bindgen con múltiples rutas de include
         $includeDir = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\include"
         $env:BINDGEN_EXTRA_CLANG_ARGS = "-I$includeDir -I$includeDir\opus -I$includeDir\vpx --sysroot=$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static"
+        
+        # Configuración adicional específica para magnum-opus bindgen
+        $env:CLANG_INCLUDE_PATH = "$includeDir;$includeDir\opus;$includeDir\vpx"
+        $env:CPATH = "$includeDir;$includeDir\opus;$includeDir\vpx"
         
         # Variables adicionales para build scripts y compatibilidad
         $env:CPPFLAGS = "-I$includeDir -I$includeDir\opus -I$includeDir\vpx"
