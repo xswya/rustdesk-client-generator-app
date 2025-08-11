@@ -92,8 +92,31 @@ jobs:
         
         echo "Archivo vcpkg.json encontrado, instalando dependencias en modo manifiesto..."
         
+        # SOLUCIÓN AL WARNING: "Use MSVC to compile libyuv results in a very slow library"
+        # Este warning aparece porque MSVC produce una versión lenta de libyuv
+        # Solución: Usar Clang en lugar de MSVC para compilar las dependencias nativas
+        
+        # Configurar Clang como compilador para evitar el warning de rendimiento de libyuv con MSVC
+        # Ref: https://github.com/microsoft/vcpkg/issues/28446
+        export CC=clang
+        export CXX=clang++
+        export VCPKG_PLATFORM_TOOLSET=ClangCL
+        
+        echo "Configurando Clang como compilador para mejorar rendimiento de libyuv..."
+        echo "CC=$CC, CXX=$CXX, VCPKG_PLATFORM_TOOLSET=$VCPKG_PLATFORM_TOOLSET"
+        
         # En modo manifiesto, vcpkg usa el archivo vcpkg.json del proyecto RustDesk
-        # Instalar dependencias usando el modo manifiesto
+        # Instalar dependencias usando el modo manifiesto con Clang
+        # Añadir flags de optimización para mejorar rendimiento
+        export VCPKG_FEATURE_FLAGS="manifests,versions"
+        export VCPKG_OVERLAY_TRIPLETS=""
+        
+        # Configurar flags de compilación optimizados
+        export CFLAGS="-O3 -march=native"
+        export CXXFLAGS="-O3 -march=native"
+        
+        echo "Flags de optimización configurados: CFLAGS=$CFLAGS, CXXFLAGS=$CXXFLAGS"
+        
         vcpkg install --triplet x64-windows-static
         
         # Verificar que las dependencias se instalaron correctamente
