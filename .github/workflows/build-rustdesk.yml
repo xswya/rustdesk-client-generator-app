@@ -189,16 +189,34 @@ jobs:
         # Configurar variables específicas para linking estático
         $env:RUSTFLAGS = "-C target-feature=+crt-static"
         
+        # Solución para errores de headers no encontrados en magnum-opus y scrap
+        # Configuramos variables específicas para opus y vpx, y mejoramos bindgen
+        # para que pueda encontrar todos los headers necesarios
+        
         # Configurar variables específicas para magnum-opus y headers de opus
         $env:OPUS_INCLUDE_DIR = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\include"
         $env:OPUS_LIB_DIR = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\lib"
         $env:OPUS_STATIC = "1"
-        $env:BINDGEN_EXTRA_CLANG_ARGS = "-I$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\include"
         
-        # Variables adicionales para magnum-opus build script
+        # Configurar variables específicas para scrap y headers de vpx
+        $env:VPX_INCLUDE_DIR = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\include"
+        $env:VPX_LIB_DIR = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\lib"
+        $env:VPX_STATIC = "1"
+        
+        # Configurar bindgen con múltiples rutas de include
+        $includeDir = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\include"
+        $env:BINDGEN_EXTRA_CLANG_ARGS = "-I$includeDir -I$includeDir\opus -I$includeDir\vpx --sysroot=$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static"
+        
+        # Variables adicionales para build scripts
         $env:OPUS_NO_PKG = "1"
-        $env:CPPFLAGS = "-I$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\include"
+        $env:VPX_NO_PKG = "1"
+        $env:CPPFLAGS = "-I$includeDir -I$includeDir\opus -I$includeDir\vpx"
         $env:LDFLAGS = "-L$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\lib"
+        
+        # Configurar variables de entorno adicionales para bindgen
+        $env:LIBCLANG_INCLUDE_PATH = "$includeDir"
+        $env:C_INCLUDE_PATH = "$includeDir"
+        $env:CPLUS_INCLUDE_PATH = "$includeDir"
         
         # Verificar configuración de vcpkg
         Write-Host "Configuración de vcpkg:"
@@ -227,6 +245,26 @@ jobs:
         )
         
         foreach ($header in $opusHeaders) {
+          $headerPath = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\include\$header"
+          if (Test-Path $headerPath) {
+            Write-Host "✅ $header encontrado"
+          } else {
+            Write-Host "❌ $header NO encontrado en $headerPath"
+          }
+        }
+        
+        # Verificar específicamente los headers de vpx que necesita scrap
+        Write-Host "Verificando headers específicos de vpx:"
+        $vpxHeaders = @(
+          "vpx\vp8.h",
+          "vpx\vp8cx.h",
+          "vpx\vp8dx.h",
+          "vpx\vpx_codec.h",
+          "vpx\vpx_decoder.h",
+          "vpx\vpx_encoder.h"
+        )
+        
+        foreach ($header in $vpxHeaders) {
           $headerPath = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\include\$header"
           if (Test-Path $headerPath) {
             Write-Host "✅ $header encontrado"
