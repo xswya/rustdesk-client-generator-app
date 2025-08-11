@@ -173,7 +173,7 @@ export const ExportPanel: React.FC<ExportPanelProps> = ({ config, onClose }) => 
                   <div>
                     <span className="font-medium text-gray-700">Versión:</span>
                     <span className="ml-2 text-gray-600">
-                      {config.build?.version || '1.0.0'}
+                      {config.build?.VERSION || '1.0.0'}
                     </span>
                   </div>
                   <div>

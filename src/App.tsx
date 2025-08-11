@@ -186,7 +186,7 @@ function App() {
                     </div>
                     <div>
                       <span className="text-gray-600">Versión:</span>
-                      <span className="ml-2">{watchedValues.build?.version}</span>
+                      <span className="ml-2">{watchedValues.build?.VERSION}</span>
                     </div>
                   </div>
                 </div>

@@ -309,7 +309,7 @@ export const GitHubBuildPanel: React.FC<GitHubBuildPanelProps> = ({ config, onCl
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Versión:</span>
-                <span className="font-medium">{config.build?.version || 'v1.0.0'}</span>
+                <span className="font-medium">{config.build?.VERSION || 'v1.0.0'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Servidor:</span>
