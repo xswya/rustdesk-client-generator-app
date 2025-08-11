@@ -75,15 +75,43 @@ export const GitHubBuildPanel: React.FC<GitHubBuildPanelProps> = ({ config, onCl
         message: 'Iniciando workflow de GitHub Actions...'
       });
 
+      // Filtrar el objeto config para excluir la sección build que contiene campos duplicados
+      console.log('=== DEBUG: Config original ===');
+      console.log(config);
+      console.log('=== DEBUG: Config.build ===');
+      console.log(config.build);
+      
+      // Crear un nuevo objeto sin la sección build para evitar claves duplicadas
+      const configWithoutBuild = {
+        server: config.server,
+        security: config.security,
+        branding: config.branding,
+        advanced: config.advanced
+      };
+      
+      console.log('=== DEBUG: Config sin build ===');
+      console.log(configWithoutBuild);
+      
+      const configJson = JSON.stringify(configWithoutBuild);
+      console.log('=== DEBUG: Config JSON (length:', configJson.length, ') ===');
+      console.log(configJson);
+      
+      // Verificar que no contiene la palabra "build"
+      if (configJson.includes('"build"')) {
+        console.error('ERROR: El JSON aún contiene la sección build!');
+      } else {
+        console.log('✅ Confirmado: El JSON NO contiene la sección build');
+      }
+      
       const workflowInputs = {
-        config_json: JSON.stringify(config),
+        config_json: configJson,
         executable_name: config.branding?.APP_NAME || 'rustdesk-custom',
-        rustdesk_branch: 'master',
-        target_arch: 'x86_64',
-        enable_portable: true,
-        include_installer: true,
-        enable_debug: false,
-        sign_executable: false
+        rustdesk_branch: config.build?.RUSTDESK_BRANCH || 'master',
+        target_arch: config.build?.TARGET_ARCH || 'x86_64',
+        enable_portable: config.build?.ENABLE_PORTABLE_MODE || true,
+        include_installer: config.build?.INCLUDE_INSTALLER || true,
+        enable_debug: config.build?.ENABLE_DEBUG_MODE || false,
+        sign_executable: config.build?.SIGN_EXECUTABLE || false
       };
 
       // Ejecutar el workflow
