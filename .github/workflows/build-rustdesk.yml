@@ -61,6 +61,7 @@ jobs:
         repository: rustdesk/rustdesk
         ref: ${{ inputs.rustdesk_branch }}
         submodules: recursive
+        path: rustdesk
         
     - name: Install Rust
       uses: dtolnay/rust-toolchain@stable
@@ -113,16 +114,18 @@ jobs:
       shell: bash
         
     - name: Create config directory
-      run: mkdir -p src/ui
+      run: mkdir -p rustdesk/src/ui
       shell: bash
       
     - name: Write configuration
       run: |
-        echo '${{ inputs.config_json }}' > src/ui/config.json
+        echo '${{ inputs.config_json }}' > rustdesk/src/ui/config.json
       shell: bash
       
     - name: Parse and apply configuration
       run: |
+        cd rustdesk
+        
         $config = '${{ inputs.config_json }}' | ConvertFrom-Json
         
         # Crear archivo de configuración Rust
@@ -149,6 +152,8 @@ jobs:
       
     - name: Build RustDesk
       run: |
+        cd rustdesk
+        
         $env:VCPKG_ROOT = "$env:VCPKG_INSTALLATION_ROOT"
         $env:LIBCLANG_PATH = "$env:PROGRAMFILES\LLVM\bin"
         
@@ -184,6 +189,8 @@ jobs:
       
     - name: Prepare executable
       run: |
+        cd rustdesk
+        
         $config = '${{ inputs.config_json }}' | ConvertFrom-Json
         $executableName = "${{ inputs.executable_name }}"
         
@@ -216,6 +223,8 @@ jobs:
     - name: Create installer (if enabled)
       if: inputs.include_installer == true
       run: |
+        cd rustdesk
+        
         # Instalar NSIS
         choco install nsis -y
         
@@ -274,9 +283,9 @@ jobs:
       with:
         name: rustdesk-${{ inputs.executable_name }}-windows-${{ inputs.target_arch }}
         path: |
-          target/release/${{ inputs.executable_name }}.exe
-          target/release/${{ inputs.executable_name }}.portable
-          ${{ inputs.executable_name }}-installer.exe
+          rustdesk/target/release/${{ inputs.executable_name }}.exe
+          rustdesk/target/release/${{ inputs.executable_name }}.portable
+          rustdesk/${{ inputs.executable_name }}-installer.exe
         retention-days: 30
         
     - name: Create release info
