@@ -1,0 +1,239 @@
+name: Build RustDesk Client
+
+on:
+  workflow_dispatch:
+    inputs:
+      config_json:
+        description: 'Configuration JSON'
+        required: true
+        type: string
+      executable_name:
+        description: 'Executable name'
+        required: true
+        type: string
+        default: 'rustdesk-custom'
+      version:
+        description: 'Version'
+        required: true
+        type: string
+        default: 'v1.0.0'
+      rustdesk_branch:
+        description: 'RustDesk branch'
+        required: false
+        type: string
+        default: 'master'
+      target_arch:
+        description: 'Target architecture'
+        required: false
+        type: choice
+        options:
+          - x86_64
+          - aarch64
+        default: 'x86_64'
+      enable_portable:
+        description: 'Enable portable mode'
+        required: false
+        type: boolean
+        default: true
+      include_installer:
+        description: 'Include installer'
+        required: false
+        type: boolean
+        default: true
+      enable_debug:
+        description: 'Enable debug mode'
+        required: false
+        type: boolean
+        default: false
+      sign_executable:
+        description: 'Sign executable'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout RustDesk
+      uses: actions/checkout@v4
+      with:
+        repository: rustdesk/rustdesk
+        ref: ${{ inputs.rustdesk_branch }}
+        submodules: recursive
+        
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: stable
+        targets: x86_64-pc-windows-msvc
+        
+    - name: Install dependencies
+      run: |
+        choco install llvm -y
+        pip install cffi
+        
+    - name: Setup vcpkg
+      uses: lukka/run-vcpkg@v11
+      with:
+        vcpkgGitCommitId: 'a42af01b72c28a8e1d7b48107b33e4f286a55ef6'
+        
+    - name: Install vcpkg dependencies
+      run: |
+        vcpkg install libvpx:x64-windows-static
+        vcpkg install libyuv:x64-windows-static
+        vcpkg install opus:x64-windows-static
+        
+    - name: Create config directory
+      run: mkdir -p src/ui
+      shell: bash
+      
+    - name: Write configuration
+      run: |
+        echo '${{ inputs.config_json }}' > src/ui/config.json
+      shell: bash
+      
+    - name: Parse and apply configuration
+      run: |
+        $config = '${{ inputs.config_json }}' | ConvertFrom-Json
+        
+        # Crear archivo de configuración Rust
+        $rustConfig = @"
+        // Auto-generated configuration
+        pub const RENDEZVOUS_SERVER: &str = "$($config.server.RENDEZVOUS_SERVER)";
+        pub const RELAY_SERVER: &str = "$($config.server.RELAY_SERVER)";
+        pub const API_SERVER: &str = "$($config.server.API_SERVER)";
+        pub const KEY: &str = "$($config.server.KEY)";
+        pub const PRODUCT_NAME: &str = "$($config.branding.PRODUCT_NAME)";
+        pub const APP_NAME: &str = "$($config.branding.APP_NAME)";
+        "@
+        
+        $rustConfig | Out-File -FilePath "src/config.rs" -Encoding UTF8
+        
+        # Actualizar Cargo.toml con el nombre del producto
+        $cargoToml = Get-Content "Cargo.toml" -Raw
+        $cargoToml = $cargoToml -replace 'name = "rustdesk"', "name = `"$($config.branding.APP_NAME)`""
+        $cargoToml | Out-File -FilePath "Cargo.toml" -Encoding UTF8
+        
+      shell: powershell
+      
+    - name: Build RustDesk
+      run: |
+        $env:VCPKG_ROOT = "$env:VCPKG_INSTALLATION_ROOT"
+        $env:LIBCLANG_PATH = "$env:PROGRAMFILES\LLVM\bin"
+        
+        if ("${{ inputs.enable_debug }}" -eq "true") {
+          cargo build --release --features inline
+        } else {
+          cargo build --release --features inline
+        }
+      shell: powershell
+      
+    - name: Prepare executable
+      run: |
+        $config = '${{ inputs.config_json }}' | ConvertFrom-Json
+        $executableName = "${{ inputs.executable_name }}"
+        
+        # Copiar el ejecutable con el nombre personalizado
+        Copy-Item "target/release/rustdesk.exe" "target/release/$executableName.exe"
+        
+        # Si es modo portable, crear el archivo .portable
+        if ("${{ inputs.enable_portable }}" -eq "true") {
+          New-Item -Path "target/release/$executableName.portable" -ItemType File
+        }
+      shell: powershell
+      
+    - name: Create installer (if enabled)
+      if: inputs.include_installer == true
+      run: |
+        # Instalar NSIS
+        choco install nsis -y
+        
+        # Crear script NSIS básico
+        $config = '${{ inputs.config_json }}' | ConvertFrom-Json
+        $executableName = "${{ inputs.executable_name }}"
+        
+        $nsisScript = @"
+        !define PRODUCT_NAME "$($config.branding.PRODUCT_NAME)"
+        !define PRODUCT_VERSION "${{ inputs.version }}"
+        !define PRODUCT_PUBLISHER "$($config.branding.PRODUCT_NAME)"
+        !define PRODUCT_WEB_SITE "https://rustdesk.com"
+        !define PRODUCT_DIR_REGKEY "Software\Microsoft\Windows\CurrentVersion\App Paths\$executableName.exe"
+        !define PRODUCT_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\`${PRODUCT_NAME}"
+        
+        SetCompressor lzma
+        
+        Name "`${PRODUCT_NAME}"
+        OutFile "$executableName-installer.exe"
+        InstallDir "`$PROGRAMFILES\`${PRODUCT_NAME}"
+        
+        Section "MainSection" SEC01
+          SetOutPath "`$INSTDIR"
+          File "target\release\$executableName.exe"
+          CreateDirectory "`$SMPROGRAMS\`${PRODUCT_NAME}"
+          CreateShortCut "`$SMPROGRAMS\`${PRODUCT_NAME}\`${PRODUCT_NAME}.lnk" "`$INSTDIR\$executableName.exe"
+          CreateShortCut "`$DESKTOP\`${PRODUCT_NAME}.lnk" "`$INSTDIR\$executableName.exe"
+        SectionEnd
+        
+        Section -AdditionalIcons
+          WriteIniStr "`$INSTDIR\`${PRODUCT_NAME}.url" "InternetShortcut" "URL" "`${PRODUCT_WEB_SITE}"
+          CreateShortCut "`$SMPROGRAMS\`${PRODUCT_NAME}\Website.lnk" "`$INSTDIR\`${PRODUCT_NAME}.url"
+          CreateShortCut "`$SMPROGRAMS\`${PRODUCT_NAME}\Uninstall.lnk" "`$INSTDIR\uninst.exe"
+        SectionEnd
+        
+        Section -Post
+          WriteUninstaller "`$INSTDIR\uninst.exe"
+          WriteRegStr HKLM "`${PRODUCT_DIR_REGKEY}" "" "`$INSTDIR\$executableName.exe"
+          WriteRegStr HKLM "`${PRODUCT_UNINST_KEY}" "DisplayName" "`$(^Name)"
+          WriteRegStr HKLM "`${PRODUCT_UNINST_KEY}" "UninstallString" "`$INSTDIR\uninst.exe"
+          WriteRegStr HKLM "`${PRODUCT_UNINST_KEY}" "DisplayIcon" "`$INSTDIR\$executableName.exe"
+          WriteRegStr HKLM "`${PRODUCT_UNINST_KEY}" "DisplayVersion" "`${PRODUCT_VERSION}"
+          WriteRegStr HKLM "`${PRODUCT_UNINST_KEY}" "URLInfoAbout" "`${PRODUCT_WEB_SITE}"
+          WriteRegStr HKLM "`${PRODUCT_UNINST_KEY}" "Publisher" "`${PRODUCT_PUBLISHER}"
+        SectionEnd
+        "@
+        
+        $nsisScript | Out-File -FilePath "installer.nsi" -Encoding UTF8
+        
+        # Compilar el instalador
+        & "C:\Program Files (x86)\NSIS\makensis.exe" installer.nsi
+      shell: powershell
+      
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: rustdesk-${{ inputs.executable_name }}-windows-${{ inputs.target_arch }}
+        path: |
+          target/release/${{ inputs.executable_name }}.exe
+          target/release/${{ inputs.executable_name }}.portable
+          ${{ inputs.executable_name }}-installer.exe
+        retention-days: 30
+        
+    - name: Create release info
+      run: |
+        $config = '${{ inputs.config_json }}' | ConvertFrom-Json
+        $releaseInfo = @{
+          executable_name = "${{ inputs.executable_name }}"
+          version = "${{ inputs.version }}"
+          architecture = "${{ inputs.target_arch }}"
+          platform = "windows"
+          portable = "${{ inputs.enable_portable }}"
+          installer = "${{ inputs.include_installer }}"
+          server = $config.server.RENDEZVOUS_SERVER
+          product_name = $config.branding.PRODUCT_NAME
+          build_date = (Get-Date -Format "yyyy-MM-dd HH:mm:ss UTC")
+        }
+        
+        $releaseInfo | ConvertTo-Json | Out-File -FilePath "release-info.json" -Encoding UTF8
+      shell: powershell
+      
+    - name: Upload release info
+      uses: actions/upload-artifact@v4
+      with:
+        name: release-info
+        path: release-info.json
+        retention-days: 30

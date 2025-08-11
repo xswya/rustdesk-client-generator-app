@@ -36,44 +36,141 @@ export const GitHubBuildPanel: React.FC<GitHubBuildPanelProps> = ({ config, onCl
 
     setBuildStatus({
       status: 'configuring',
-      message: 'Configurando el workflow de GitHub Actions...'
+      message: 'Validando repositorio de GitHub...'
     });
 
     try {
-      // Preparar la configuración para el workflow
-      // const workflowInputs = {
-      //   config_json: JSON.stringify(config),
-      //   executable_name: config.branding?.product_name || 'rustdesk-custom',
-      //   version: config.build?.version || 'v1.0.0',
-      //   rustdesk_branch: 'master',
-      //   target_arch: 'x86_64',
-      //   enable_portable: true,
-      //   include_installer: true,
-      //   enable_debug: false,
-      //   sign_executable: false
-      // };
-
-      // Simular llamada a GitHub API para ejecutar workflow
-      setBuildStatus({
-        status: 'building',
-        message: 'Ejecutando workflow de GitHub Actions...',
-        workflowUrl: `https://github.com/${githubConfig.owner}/${githubConfig.repo}/actions`
+      // Validar que el repositorio existe
+      const repoUrl = `https://api.github.com/repos/${githubConfig.owner}/${githubConfig.repo}`;
+      const response = await fetch(repoUrl, {
+        headers: {
+          'Authorization': `token ${githubConfig.token}`,
+          'Accept': 'application/vnd.github.v3+json'
+        }
       });
 
-      // Simular proceso de build (en implementación real, aquí harías la llamada real a GitHub API)
-      setTimeout(() => {
+      if (!response.ok) {
+        if (response.status === 404) {
+          setBuildStatus({
+            status: 'error',
+            message: `El repositorio ${githubConfig.owner}/${githubConfig.repo} no existe o no tienes acceso a él`
+          });
+        } else if (response.status === 401) {
+          setBuildStatus({
+            status: 'error',
+            message: 'Token de GitHub inválido o sin permisos suficientes'
+          });
+        } else {
+          setBuildStatus({
+            status: 'error',
+            message: `Error al acceder al repositorio: ${response.status} ${response.statusText}`
+          });
+        }
+        return;
+      }
+
+      // Ejecutar el workflow de GitHub Actions
+      setBuildStatus({
+        status: 'building',
+        message: 'Iniciando workflow de GitHub Actions...'
+      });
+
+      const workflowInputs = {
+        config_json: JSON.stringify(config),
+        executable_name: config.branding?.APP_NAME || 'rustdesk-custom',
+        version: config.build?.version || 'v1.0.0',
+        rustdesk_branch: 'master',
+        target_arch: 'x86_64',
+        enable_portable: true,
+        include_installer: true,
+        enable_debug: false,
+        sign_executable: false
+      };
+
+      // Ejecutar el workflow
+      const workflowResponse = await fetch(`https://api.github.com/repos/${githubConfig.owner}/${githubConfig.repo}/actions/workflows/build-rustdesk.yml/dispatches`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `token ${githubConfig.token}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          ref: 'main',
+          inputs: workflowInputs
+        })
+      });
+
+      if (!workflowResponse.ok) {
+        const errorText = await workflowResponse.text();
         setBuildStatus({
-          status: 'success',
-          message: '¡Compilación completada exitosamente!',
-          workflowUrl: `https://github.com/${githubConfig.owner}/${githubConfig.repo}/actions`,
-          downloadUrl: `https://github.com/${githubConfig.owner}/${githubConfig.repo}/actions/runs/latest/artifacts`
+          status: 'error',
+          message: `Error al ejecutar el workflow: ${workflowResponse.status} - ${errorText}`
         });
-      }, 3000);
+        return;
+      }
+
+      // Workflow iniciado exitosamente
+      setBuildStatus({
+        status: 'building',
+        message: 'Workflow iniciado exitosamente. Compilando cliente RustDesk...',
+        workflowUrl: `https://github.com/${githubConfig.owner}/${githubConfig.repo}/actions/workflows/build-rustdesk.yml`
+      });
+
+      // Monitorear el progreso del workflow
+      const monitorWorkflow = async () => {
+        try {
+          // Obtener las ejecuciones del workflow
+          const runsResponse = await fetch(`https://api.github.com/repos/${githubConfig.owner}/${githubConfig.repo}/actions/workflows/build-rustdesk.yml/runs?per_page=1`, {
+            headers: {
+              'Authorization': `token ${githubConfig.token}`,
+              'Accept': 'application/vnd.github.v3+json'
+            }
+          });
+
+          if (runsResponse.ok) {
+            const runsData = await runsResponse.json();
+            if (runsData.workflow_runs && runsData.workflow_runs.length > 0) {
+              const latestRun = runsData.workflow_runs[0];
+              
+              if (latestRun.status === 'completed') {
+                if (latestRun.conclusion === 'success') {
+                  setBuildStatus({
+                    status: 'success',
+                    message: '¡Compilación completada exitosamente!',
+                    workflowUrl: latestRun.html_url,
+                    downloadUrl: `https://github.com/${githubConfig.owner}/${githubConfig.repo}/actions/runs/${latestRun.id}/artifacts`
+                  });
+                } else {
+                  setBuildStatus({
+                    status: 'error',
+                    message: `Compilación falló: ${latestRun.conclusion}`,
+                    workflowUrl: latestRun.html_url
+                  });
+                }
+              } else if (latestRun.status === 'in_progress') {
+                setBuildStatus({
+                  status: 'building',
+                  message: 'Compilación en progreso...',
+                  workflowUrl: latestRun.html_url
+                });
+                // Continuar monitoreando
+                setTimeout(monitorWorkflow, 30000); // Verificar cada 30 segundos
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Error monitoring workflow:', error);
+        }
+      };
+
+      // Iniciar monitoreo después de 10 segundos
+      setTimeout(monitorWorkflow, 10000);
 
     } catch (error) {
       setBuildStatus({
         status: 'error',
-        message: 'Error al ejecutar el workflow: ' + (error as Error).message
+        message: 'Error de conexión: ' + (error as Error).message
       });
     }
   };
@@ -284,6 +381,12 @@ export const GitHubBuildPanel: React.FC<GitHubBuildPanelProps> = ({ config, onCl
               <li>El proceso tomará 15-30 minutos aproximadamente</li>
               <li>Una vez completado, podrás descargar el ejecutable desde GitHub</li>
             </ol>
+            <div className="mt-3 p-3 bg-blue-100 rounded">
+              <p className="text-xs text-blue-700">
+                <strong>Nota:</strong> El workflow compilará automáticamente el cliente RustDesk con tu configuración personalizada. 
+                Se generará tanto el ejecutable portable como un instalador.
+              </p>
+            </div>
           </div>
         </div>
       </div>
