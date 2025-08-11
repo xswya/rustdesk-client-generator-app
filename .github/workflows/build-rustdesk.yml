@@ -84,9 +84,9 @@ jobs:
         
     - name: Install vcpkg dependencies
       run: |
-        vcpkg install libvpx:x64-windows-static
-        vcpkg install libyuv:x64-windows-static
-        vcpkg install opus:x64-windows-static
+        # En modo manifiesto, vcpkg install sin argumentos instala las dependencias del vcpkg.json
+        vcpkg install
+      shell: bash
         
     - name: Create config directory
       run: mkdir -p src/ui
