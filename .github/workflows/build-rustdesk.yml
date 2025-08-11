@@ -312,6 +312,23 @@ jobs:
         $env:DEP_OPUS_LIB = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\lib"
         $env:DEP_OPUS_STATIC = "1"
         
+        # VERIFICACIÓN CRÍTICA: Asegurar que VCPKG_INSTALLATION_ROOT está configurado
+        Write-Host "=== Verificando configuración de vcpkg ==="
+        if (-not $env:VCPKG_INSTALLATION_ROOT) {
+          Write-Error "❌ VCPKG_INSTALLATION_ROOT no está configurado"
+          Write-Host "Variables de entorno disponibles:"
+          Get-ChildItem Env: | Where-Object { $_.Name -like "*VCPKG*" } | ForEach-Object { Write-Host "  $($_.Name) = $($_.Value)" }
+          exit 1
+        }
+        
+        Write-Host "✅ VCPKG_INSTALLATION_ROOT configurado: $env:VCPKG_INSTALLATION_ROOT"
+        
+        # Verificar que el directorio raíz de vcpkg existe
+        if (-not (Test-Path $env:VCPKG_INSTALLATION_ROOT)) {
+          Write-Error "❌ Directorio raíz de vcpkg no encontrado: $env:VCPKG_INSTALLATION_ROOT"
+          exit 1
+        }
+        
         # SOLUCIÓN ESPECÍFICA PARA MAGNUM-OPUS: Crear estructura de directorios esperada
         # magnum-opus busca opus/opus_multistream.h pero vcpkg instala directamente en include/
         Write-Host "=== Configurando estructura de headers para magnum-opus ==="
@@ -321,9 +338,29 @@ jobs:
         Write-Host "Directorio include base: $opusIncludeDir"
         Write-Host "Directorio opus destino: $opusSubDir"
         
+        # Verificar que el directorio installed existe
+        $installedDir = "$env:VCPKG_INSTALLATION_ROOT\installed"
+        if (-not (Test-Path $installedDir)) {
+          Write-Error "❌ Directorio installed no encontrado: $installedDir"
+          Write-Host "Contenido del directorio raíz de vcpkg:"
+          Get-ChildItem $env:VCPKG_INSTALLATION_ROOT | ForEach-Object { Write-Host "  - $($_.Name)" }
+          exit 1
+        }
+        
+        # Verificar que el directorio x64-windows-static existe
+        $tripletDir = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static"
+        if (-not (Test-Path $tripletDir)) {
+          Write-Error "❌ Directorio x64-windows-static no encontrado: $tripletDir"
+          Write-Host "Contenido del directorio installed:"
+          Get-ChildItem $installedDir | ForEach-Object { Write-Host "  - $($_.Name)" }
+          exit 1
+        }
+        
         # Verificar que el directorio include base existe
         if (-not (Test-Path $opusIncludeDir)) {
           Write-Error "❌ Directorio include base no encontrado: $opusIncludeDir"
+          Write-Host "Contenido del directorio x64-windows-static:"
+          Get-ChildItem $tripletDir | ForEach-Object { Write-Host "  - $($_.Name)" }
           exit 1
         }
         
@@ -344,30 +381,55 @@ jobs:
         
         Write-Host "✅ Directorio opus creado exitosamente"
         
-        # Copiar TODOS los headers de opus al subdirectorio opus/
-        Write-Host "Copiando headers de opus al subdirectorio..."
+        # Verificar que los headers de opus están disponibles
+        Write-Host "=== Verificando disponibilidad de headers de opus ==="
         $opusHeaders = @("opus.h", "opus_multistream.h", "opus_defines.h", "opus_types.h", "opus_custom.h")
-        $copiedHeaders = 0
+        $availableHeaders = @()
         
         foreach ($header in $opusHeaders) {
           $sourceFile = "$opusIncludeDir\$header"
+          if (Test-Path $sourceFile) {
+            $availableHeaders += $header
+            Write-Host "  ✅ $header encontrado"
+          } else {
+            Write-Host "  ❌ $header NO encontrado en $sourceFile"
+          }
+        }
+        
+        if ($availableHeaders.Count -eq 0) {
+          Write-Error "❌ CRÍTICO: No se encontraron headers de opus en $opusIncludeDir"
+          Write-Host "Contenido del directorio include:"
+          Get-ChildItem $opusIncludeDir | ForEach-Object { Write-Host "  - $($_.Name)" }
+          Write-Host "Buscando archivos que contengan 'opus' en el nombre:"
+          Get-ChildItem $opusIncludeDir -Filter "*opus*" | ForEach-Object { Write-Host "  - $($_.Name)" }
+          exit 1
+        }
+        
+        Write-Host "✅ Encontrados $($availableHeaders.Count) headers de opus de $($opusHeaders.Count) esperados"
+        
+        # Copiar TODOS los headers de opus disponibles al subdirectorio opus/
+        Write-Host "Copiando headers de opus al subdirectorio..."
+        $copiedHeaders = 0
+        
+        foreach ($header in $availableHeaders) {
+          $sourceFile = "$opusIncludeDir\$header"
           $destFile = "$opusSubDir\$header"
           
-          if (Test-Path $sourceFile) {
-            Write-Host "  Copiando $header..."
+          Write-Host "  Copiando $header..."
+          try {
             Copy-Item $sourceFile $destFile -Force
             if (Test-Path $destFile) {
               Write-Host "  ✅ $header copiado exitosamente"
               $copiedHeaders++
             } else {
-              Write-Host "  ❌ Error copiando $header"
+              Write-Host "  ❌ Error: $header no se copió correctamente"
             }
-          } else {
-            Write-Host "  ⚠️ Header $header no encontrado en $sourceFile"
+          } catch {
+            Write-Host "  ❌ Excepción copiando $header`: $($_.Exception.Message)"
           }
         }
         
-        Write-Host "Headers copiados: $copiedHeaders de $($opusHeaders.Count)"
+        Write-Host "Headers copiados: $copiedHeaders de $($availableHeaders.Count) disponibles"
         
         # Verificación final crítica
         $criticalHeader = "$opusSubDir\opus_multistream.h"
