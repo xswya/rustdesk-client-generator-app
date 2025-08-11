@@ -179,6 +179,7 @@ jobs:
         
         $env:VCPKG_ROOT = "$env:VCPKG_INSTALLATION_ROOT"
         $env:LIBCLANG_PATH = "$env:PROGRAMFILES\LLVM\bin"
+        $env:CLANG_PATH = "$env:PROGRAMFILES\LLVM\bin\clang.exe"
         
         # Configurar variables de entorno para vcpkg en modo manifiesto
         $env:VCPKG_DEFAULT_TRIPLET = "x64-windows-static"
@@ -188,11 +189,25 @@ jobs:
         # Configurar variables específicas para linking estático
         $env:RUSTFLAGS = "-C target-feature=+crt-static"
         
+        # Configurar variables específicas para magnum-opus y headers de opus
+        $env:OPUS_INCLUDE_DIR = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\include"
+        $env:OPUS_LIB_DIR = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\lib"
+        $env:OPUS_STATIC = "1"
+        $env:BINDGEN_EXTRA_CLANG_ARGS = "-I$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\include"
+        
+        # Variables adicionales para magnum-opus build script
+        $env:OPUS_NO_PKG = "1"
+        $env:CPPFLAGS = "-I$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\include"
+        $env:LDFLAGS = "-L$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\lib"
+        
         # Verificar configuración de vcpkg
         Write-Host "Configuración de vcpkg:"
         Write-Host "VCPKG_ROOT: $env:VCPKG_ROOT"
         Write-Host "VCPKG_DEFAULT_TRIPLET: $env:VCPKG_DEFAULT_TRIPLET"
         Write-Host "PKG_CONFIG_PATH: $env:PKG_CONFIG_PATH"
+        Write-Host "OPUS_INCLUDE_DIR: $env:OPUS_INCLUDE_DIR"
+        Write-Host "OPUS_LIB_DIR: $env:OPUS_LIB_DIR"
+        Write-Host "BINDGEN_EXTRA_CLANG_ARGS: $env:BINDGEN_EXTRA_CLANG_ARGS"
         
         # Verificar que los headers están disponibles
         Write-Host "Verificando headers instalados:"
@@ -200,6 +215,24 @@ jobs:
           Get-ChildItem "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\include" | Select-Object -First 20
         } else {
           Write-Host "Include directory not found"
+        }
+        
+        # Verificar específicamente los headers de opus que necesita magnum-opus
+        Write-Host "Verificando headers específicos de opus:"
+        $opusHeaders = @(
+          "opus\opus.h",
+          "opus\opus_multistream.h", 
+          "opus\opus_defines.h",
+          "opus\opus_types.h"
+        )
+        
+        foreach ($header in $opusHeaders) {
+          $headerPath = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\include\$header"
+          if (Test-Path $headerPath) {
+            Write-Host "✅ $header encontrado"
+          } else {
+            Write-Host "❌ $header NO encontrado en $headerPath"
+          }
         }
         
         Write-Host "Iniciando compilación de RustDesk..."
