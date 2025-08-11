@@ -318,22 +318,70 @@ jobs:
         $opusIncludeDir = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\include"
         $opusSubDir = "$opusIncludeDir\opus"
         
-        # Verificar si ya existe el subdirectorio opus
-        if (-not (Test-Path $opusSubDir)) {
-          Write-Host "Creando directorio opus en include..."
-          New-Item -ItemType Directory -Path $opusSubDir -Force
+        Write-Host "Directorio include base: $opusIncludeDir"
+        Write-Host "Directorio opus destino: $opusSubDir"
+        
+        # Verificar que el directorio include base existe
+        if (-not (Test-Path $opusIncludeDir)) {
+          Write-Error "❌ Directorio include base no encontrado: $opusIncludeDir"
+          exit 1
         }
         
-        # Copiar headers de opus al subdirectorio opus/ si no existen
+        # Crear el subdirectorio opus (forzar recreación si existe)
+        if (Test-Path $opusSubDir) {
+          Write-Host "Removiendo directorio opus existente..."
+          Remove-Item -Path $opusSubDir -Recurse -Force
+        }
+        
+        Write-Host "Creando directorio opus en include..."
+        New-Item -ItemType Directory -Path $opusSubDir -Force | Out-Null
+        
+        # Verificar que se creó correctamente
+        if (-not (Test-Path $opusSubDir)) {
+          Write-Error "❌ No se pudo crear el directorio opus: $opusSubDir"
+          exit 1
+        }
+        
+        Write-Host "✅ Directorio opus creado exitosamente"
+        
+        # Copiar TODOS los headers de opus al subdirectorio opus/
+        Write-Host "Copiando headers de opus al subdirectorio..."
         $opusHeaders = @("opus.h", "opus_multistream.h", "opus_defines.h", "opus_types.h", "opus_custom.h")
+        $copiedHeaders = 0
+        
         foreach ($header in $opusHeaders) {
           $sourceFile = "$opusIncludeDir\$header"
           $destFile = "$opusSubDir\$header"
           
-          if ((Test-Path $sourceFile) -and (-not (Test-Path $destFile))) {
-            Write-Host "Copiando $header a subdirectorio opus/"
-            Copy-Item $sourceFile $destFile
+          if (Test-Path $sourceFile) {
+            Write-Host "  Copiando $header..."
+            Copy-Item $sourceFile $destFile -Force
+            if (Test-Path $destFile) {
+              Write-Host "  ✅ $header copiado exitosamente"
+              $copiedHeaders++
+            } else {
+              Write-Host "  ❌ Error copiando $header"
+            }
+          } else {
+            Write-Host "  ⚠️ Header $header no encontrado en $sourceFile"
           }
+        }
+        
+        Write-Host "Headers copiados: $copiedHeaders de $($opusHeaders.Count)"
+        
+        # Verificación final crítica
+        $criticalHeader = "$opusSubDir\opus_multistream.h"
+        if (Test-Path $criticalHeader) {
+          Write-Host "✅ CRÍTICO: opus/opus_multistream.h está disponible en $criticalHeader"
+        } else {
+          Write-Error "❌ CRÍTICO: opus/opus_multistream.h NO está disponible en $criticalHeader"
+          Write-Host "Listando contenido del directorio opus:"
+          if (Test-Path $opusSubDir) {
+            Get-ChildItem $opusSubDir | ForEach-Object { Write-Host "  - $($_.Name)" }
+          }
+          Write-Host "Listando contenido del directorio include base:"
+          Get-ChildItem $opusIncludeDir -Filter "opus*" | ForEach-Object { Write-Host "  - $($_.Name)" }
+          exit 1
         }
         
         # Variables adicionales específicas para magnum-opus build script
@@ -355,6 +403,23 @@ jobs:
         # Configuración adicional específica para magnum-opus bindgen
         $env:CLANG_INCLUDE_PATH = "$includeDir;$includeDir\opus;$includeDir\vpx"
         $env:CPATH = "$includeDir;$includeDir\opus;$includeDir\vpx"
+        
+        # VERIFICACIÓN ADICIONAL: Probar que clang puede encontrar el header
+        Write-Host "=== Verificando que clang puede encontrar opus_multistream.h ==="
+        $testCommand = "echo '#include <opus/opus_multistream.h>' | `"$env:CLANG_PATH`" -I`"$includeDir`" -I`"$includeDir\opus`" -E -"
+        Write-Host "Comando de prueba: $testCommand"
+        
+        try {
+          $testResult = Invoke-Expression $testCommand 2>&1
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "✅ Clang puede encontrar opus/opus_multistream.h correctamente"
+          } else {
+            Write-Host "⚠️ Clang tuvo problemas encontrando el header:"
+            Write-Host $testResult
+          }
+        } catch {
+          Write-Host "⚠️ No se pudo ejecutar la prueba de clang: $($_.Exception.Message)"
+        }
         
         # Variables adicionales para build scripts y compatibilidad
         $env:CPPFLAGS = "-I$includeDir -I$includeDir\opus -I$includeDir\vpx"
