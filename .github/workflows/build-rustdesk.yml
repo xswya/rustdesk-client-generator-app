@@ -40,6 +40,16 @@ on:
         required: false
         type: boolean
         default: false
+      fast_check_mode:
+        description: 'Fast check mode (only verify dependencies and headers)'
+        required: false
+        type: boolean
+        default: false
+      headers_only_mode:
+        description: 'Headers only mode (just verify headers and dependencies setup)'
+        required: false
+        type: boolean
+        default: false
       sign_executable:
         description: 'Sign executable'
         required: false
@@ -68,6 +78,32 @@ jobs:
       with:
         toolchain: stable
         targets: x86_64-pc-windows-msvc
+        
+    # OPTIMIZACIÓN: Caché de Rust para acelerar compilaciones incrementales
+    - name: Cache Rust dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          rustdesk/target/
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-
+          
+    # OPTIMIZACIÓN: Caché de vcpkg para evitar recompilar dependencias
+    - name: Cache vcpkg
+      uses: actions/cache@v4
+      with:
+        path: |
+          ${{ env.VCPKG_INSTALLATION_ROOT }}/installed/
+          ${{ env.VCPKG_INSTALLATION_ROOT }}/buildtrees/
+          ${{ env.VCPKG_INSTALLATION_ROOT }}/downloads/
+        key: ${{ runner.os }}-vcpkg-${{ hashFiles('rustdesk/vcpkg.json') }}
+        restore-keys: |
+          ${{ runner.os }}-vcpkg-
         
     - name: Install dependencies
       run: |
@@ -248,10 +284,15 @@ jobs:
         $env:LIBCLANG_PATH = "$env:PROGRAMFILES\LLVM\bin"
         $env:CLANG_PATH = "$env:PROGRAMFILES\LLVM\bin\clang.exe"
         
-        # Configurar variables de entorno para vcpkg en modo manifiesto
+        # Configurar variables de entorno para vcpkg y compilación
         $env:VCPKG_DEFAULT_TRIPLET = "x64-windows-static"
         $env:VCPKG_TARGET_TRIPLET = "x64-windows-static"
         $env:PKG_CONFIG_PATH = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\lib\pkgconfig"
+        
+        # OPTIMIZACIÓN: Configurar compilación paralela
+        $env:CARGO_BUILD_JOBS = [Environment]::ProcessorCount
+        $env:RUSTC_WRAPPER = ""  # Desactivar sccache si causa problemas
+        $env:CARGO_INCREMENTAL = "1"  # Habilitar compilación incremental
         
         # Configurar variables específicas para linking estático
         $env:RUSTFLAGS = "-C target-feature=+crt-static"
@@ -393,16 +434,33 @@ jobs:
           Write-Host "❌ Directorio lib no encontrado"
         }
         
+        # MODO SOLO HEADERS: Terminar aquí si solo queremos verificar headers
+        if ("${{ inputs.headers_only_mode }}" -eq "true") {
+          Write-Host "🔍 MODO SOLO HEADERS: Verificación completada"
+          Write-Host "✅ Todas las verificaciones de headers y dependencias han terminado"
+          Write-Host "💡 Para continuar con la compilación, ejecuta sin headers_only_mode"
+          exit 0
+        }
+        
         Write-Host "=== Iniciando compilación de RustDesk ==="
         Write-Host "Modo debug habilitado: ${{ inputs.enable_debug }}"
+        Write-Host "Modo verificación rápida: ${{ inputs.fast_check_mode }}"
         
         # Compilar con información verbosa para diagnóstico
         $env:RUST_BACKTRACE = "1"
         $env:RUST_LOG = "debug"
         
-        if ("${{ inputs.enable_debug }}" -eq "true") {
+        if ("${{ inputs.fast_check_mode }}" -eq "true") {
+          Write-Host "🚀 MODO VERIFICACIÓN RÁPIDA: Solo verificando dependencias y headers"
+          Write-Host "Ejecutando cargo check para verificar que todo compila sin generar binarios..."
+          cargo check --release --features inline --verbose
+          Write-Host "✅ Verificación completada exitosamente!"
+          Write-Host "💡 Para compilación completa, ejecuta sin fast_check_mode"
+        } elseif ("${{ inputs.enable_debug }}" -eq "true") {
+          Write-Host "🔧 MODO DEBUG: Compilación completa con información de debug"
           cargo build --release --features inline --verbose
         } else {
+          Write-Host "🏗️ MODO NORMAL: Compilación completa optimizada"
           cargo build --release --features inline --verbose
         }
       shell: powershell
