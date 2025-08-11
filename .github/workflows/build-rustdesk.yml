@@ -115,6 +115,8 @@ jobs:
         # Actualizar Cargo.toml con el nombre del producto
         $cargoToml = Get-Content "Cargo.toml" -Raw
         $cargoToml = $cargoToml -replace 'name = "rustdesk"', "name = `"$($config.branding.APP_NAME)`""
+        # Corregir default-run para que apunte al target correcto (RustDesk con mayúsculas)
+        $cargoToml = $cargoToml -replace 'default-run = "rustdesk"', 'default-run = "RustDesk"'
         $cargoToml | Out-File -FilePath "Cargo.toml" -Encoding UTF8
         
       shell: powershell
@@ -136,8 +138,25 @@ jobs:
         $config = '${{ inputs.config_json }}' | ConvertFrom-Json
         $executableName = "${{ inputs.executable_name }}"
         
-        # Copiar el ejecutable con el nombre personalizado
-        Copy-Item "target/release/rustdesk.exe" "target/release/$executableName.exe"
+        # Buscar el ejecutable generado (puede ser RustDesk.exe o el nombre personalizado)
+        $builtExecutable = ""
+        if (Test-Path "target/release/RustDesk.exe") {
+          $builtExecutable = "target/release/RustDesk.exe"
+        } elseif (Test-Path "target/release/rustdesk.exe") {
+          $builtExecutable = "target/release/rustdesk.exe"
+        } elseif (Test-Path "target/release/$($config.branding.APP_NAME).exe") {
+          $builtExecutable = "target/release/$($config.branding.APP_NAME).exe"
+        } else {
+          Write-Error "No se encontró el ejecutable compilado"
+          exit 1
+        }
+        
+        Write-Host "Ejecutable encontrado: $builtExecutable"
+        
+        # Copiar el ejecutable con el nombre personalizado si es diferente
+        if ($builtExecutable -ne "target/release/$executableName.exe") {
+          Copy-Item $builtExecutable "target/release/$executableName.exe"
+        }
         
         # Si es modo portable, crear el archivo .portable
         if ("${{ inputs.enable_portable }}" -eq "true") {
