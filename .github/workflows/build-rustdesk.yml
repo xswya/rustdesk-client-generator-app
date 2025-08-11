@@ -82,7 +82,7 @@ jobs:
       uses: lukka/run-vcpkg@v11
       with:
         # Usar la versión más reciente de vcpkg para tener todas las dependencias actualizadas
-        vcpkgGitCommitId: 'latest'
+        vcpkgGitCommitId: 'd30fdf55cfca16e12bc3ad99cbc615997014b61b'
         
     - name: Install vcpkg dependencies
       run: |
