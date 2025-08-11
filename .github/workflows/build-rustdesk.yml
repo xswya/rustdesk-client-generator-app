@@ -48,7 +48,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  VCPKG_DEFAULT_TRIPLET: x64-windows
+  VCPKG_DEFAULT_TRIPLET: x64-windows-static
 
 jobs:
   build-windows:
@@ -81,9 +81,17 @@ jobs:
         
     - name: Install vcpkg dependencies
       run: |
-        # En modo manifiesto, vcpkg install sin argumentos instala las dependencias del vcpkg.json
-        # Especificar triplet para evitar advertencias y asegurar compatibilidad con x64
-        vcpkg install --triplet x64-windows
+        # Instalar todas las dependencias necesarias para RustDesk
+        vcpkg install --triplet x64-windows-static opus libvpx libyuv
+        
+        # Verificar que las dependencias se instalaron correctamente
+        if [ ! -d "$VCPKG_INSTALLATION_ROOT/installed/x64-windows-static/include/opus" ]; then
+          echo "Error: opus headers not found"
+          exit 1
+        fi
+        
+        echo "Dependencias instaladas correctamente:"
+        ls -la "$VCPKG_INSTALLATION_ROOT/installed/x64-windows-static/include/" | grep -E "(opus|vpx|yuv)"
       shell: bash
         
     - name: Create config directory
@@ -126,6 +134,18 @@ jobs:
         $env:VCPKG_ROOT = "$env:VCPKG_INSTALLATION_ROOT"
         $env:LIBCLANG_PATH = "$env:PROGRAMFILES\LLVM\bin"
         
+        # Configurar variables de entorno para vcpkg static linking
+        $env:VCPKG_DEFAULT_TRIPLET = "x64-windows-static"
+        $env:PKG_CONFIG_PATH = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\lib\pkgconfig"
+        
+        # Verificar que las dependencias están disponibles
+        Write-Host "Verificando dependencias de vcpkg..."
+        if (!(Test-Path "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\include\opus")) {
+          Write-Error "opus headers not found in vcpkg"
+          exit 1
+        }
+        
+        Write-Host "Iniciando compilación..."
         if ("${{ inputs.enable_debug }}" -eq "true") {
           cargo build --release --features inline
         } else {
