@@ -87,8 +87,7 @@ export const BuildConfigSchema = z.object({
   INCLUDE_INSTALLER: z.boolean().default(true),
   ENABLE_DEBUG_MODE: z.boolean().default(false),
   SIGN_EXECUTABLE: z.boolean().default(false),
-  // Campos legacy para compatibilidad
-  version: z.string().regex(/^v\d+\.\d+\.\d+$/, 'Debe seguir el formato vX.Y.Z').default('v1.0.0'),
+  // Campos adicionales para compatibilidad
   description: z.string().optional(),
   repository_branch: z.string().default('master'),
   rustdesk_arch: z.enum(['x86_64', 'aarch64']).default('x86_64'),
@@ -184,8 +183,7 @@ export const defaultConfig: Config = {
     INCLUDE_INSTALLER: true,
     ENABLE_DEBUG_MODE: false,
     SIGN_EXECUTABLE: false,
-    // Campos legacy para compatibilidad
-    version: 'v1.0.0',
+    // Campos adicionales para compatibilidad
     description: '',
     repository_branch: 'master',
     rustdesk_arch: 'x86_64' as const,

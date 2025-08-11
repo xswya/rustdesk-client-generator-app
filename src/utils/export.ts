@@ -16,7 +16,7 @@ export const exportUtils = {
       `API_SERVER=${config.server.API_SERVER || ''}`,
       '',
       '# Configuración de build',
-      `BUILD_VERSION=${config.build.version}`,
+      `BUILD_VERSION=${config.build.VERSION}`,
       `BUILD_PLATFORM=${config.build.platform}`,
       `BUILD_ARTIFACTS=${config.build.artifacts.join(',')}`,
       `PUBLISH_RELEASE=${config.build.publish_release}`,

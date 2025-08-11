@@ -78,7 +78,7 @@ export const GitHubBuildPanel: React.FC<GitHubBuildPanelProps> = ({ config, onCl
       const workflowInputs = {
         config_json: JSON.stringify(config),
         executable_name: config.branding?.APP_NAME || 'rustdesk-custom',
-        version: config.build?.version || 'v1.0.0',
+        version: config.build?.VERSION || 'v1.0.0',
         rustdesk_branch: 'master',
         target_arch: 'x86_64',
         enable_portable: true,
