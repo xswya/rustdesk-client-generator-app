@@ -81,17 +81,35 @@ jobs:
         
     - name: Install vcpkg dependencies
       run: |
-        # Instalar todas las dependencias necesarias para RustDesk
-        vcpkg install --triplet x64-windows-static opus libvpx libyuv
+        cd rustdesk
         
-        # Verificar que las dependencias se instalaron correctamente
-        if [ ! -d "$VCPKG_INSTALLATION_ROOT/installed/x64-windows-static/include/opus" ]; then
-          echo "Error: opus headers not found"
+        # Verificar que existe el archivo vcpkg.json
+        if [ ! -f "vcpkg.json" ]; then
+          echo "Error: vcpkg.json no encontrado en el directorio rustdesk"
           exit 1
         fi
         
-        echo "Dependencias instaladas correctamente:"
-        ls -la "$VCPKG_INSTALLATION_ROOT/installed/x64-windows-static/include/" | grep -E "(opus|vpx|yuv)"
+        echo "Archivo vcpkg.json encontrado, instalando dependencias en modo manifiesto..."
+        
+        # En modo manifiesto, vcpkg usa el archivo vcpkg.json del proyecto RustDesk
+        # Instalar dependencias usando el modo manifiesto
+        vcpkg install --triplet x64-windows-static
+        
+        # Verificar que las dependencias se instalaron correctamente
+        echo "Verificando instalación de dependencias..."
+        if [ -d "$VCPKG_INSTALLATION_ROOT/installed/x64-windows-static/include/opus" ]; then
+          echo "✅ opus headers encontrados"
+        else
+          echo "⚠️ opus headers no encontrados en la ubicación esperada"
+        fi
+        
+        # Listar dependencias instaladas
+        echo "Dependencias instaladas:"
+        ls -la "$VCPKG_INSTALLATION_ROOT/installed/x64-windows-static/include/" || echo "Directorio include no encontrado"
+        
+        # Verificar librerías instaladas
+        echo "Librerías instaladas:"
+        ls -la "$VCPKG_INSTALLATION_ROOT/installed/x64-windows-static/lib/" || echo "Directorio lib no encontrado"
       shell: bash
         
     - name: Create config directory
@@ -134,18 +152,29 @@ jobs:
         $env:VCPKG_ROOT = "$env:VCPKG_INSTALLATION_ROOT"
         $env:LIBCLANG_PATH = "$env:PROGRAMFILES\LLVM\bin"
         
-        # Configurar variables de entorno para vcpkg static linking
+        # Configurar variables de entorno para vcpkg en modo manifiesto
         $env:VCPKG_DEFAULT_TRIPLET = "x64-windows-static"
+        $env:VCPKG_TARGET_TRIPLET = "x64-windows-static"
         $env:PKG_CONFIG_PATH = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\lib\pkgconfig"
         
-        # Verificar que las dependencias están disponibles
-        Write-Host "Verificando dependencias de vcpkg..."
-        if (!(Test-Path "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\include\opus")) {
-          Write-Error "opus headers not found in vcpkg"
-          exit 1
+        # Configurar variables específicas para linking estático
+        $env:RUSTFLAGS = "-C target-feature=+crt-static"
+        
+        # Verificar configuración de vcpkg
+        Write-Host "Configuración de vcpkg:"
+        Write-Host "VCPKG_ROOT: $env:VCPKG_ROOT"
+        Write-Host "VCPKG_DEFAULT_TRIPLET: $env:VCPKG_DEFAULT_TRIPLET"
+        Write-Host "PKG_CONFIG_PATH: $env:PKG_CONFIG_PATH"
+        
+        # Verificar que los headers están disponibles
+        Write-Host "Verificando headers instalados:"
+        if (Test-Path "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\include") {
+          Get-ChildItem "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\include" | Select-Object -First 20
+        } else {
+          Write-Host "Include directory not found"
         }
         
-        Write-Host "Iniciando compilación..."
+        Write-Host "Iniciando compilación de RustDesk..."
         if ("${{ inputs.enable_debug }}" -eq "true") {
           cargo build --release --features inline
         } else {
