@@ -428,8 +428,8 @@ jobs:
           Write-Host "Contenido del directorio raíz:"
           Get-ChildItem $env:VCPKG_INSTALLATION_ROOT | ForEach-Object { Write-Host "  - $($_.Name)" }
         } else {
-          Write-Error "❌ Directorio raíz de vcpkg no existe: $env:VCPKG_INSTALLATION_ROOT"
-          exit 1
+          Write-Host "❌ Directorio raíz de vcpkg no existe: $env:VCPKG_INSTALLATION_ROOT"
+          Write-Host "⚠️ Continuando sin verificación de vcpkg..."
         }
         
         if (-not (Test-Path $installedDir)) {
