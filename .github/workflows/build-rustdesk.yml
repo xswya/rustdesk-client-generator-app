@@ -239,6 +239,82 @@ jobs:
         ls -la "$VCPKG_INSTALLATION_ROOT/installed/x64-windows-static/lib/" || echo "Directorio lib no encontrado"
       shell: bash
         
+    - name: Verify vcpkg installation
+      run: |
+        Write-Host "=== Verificación post-instalación de vcpkg ==="
+        Write-Host "VCPKG_INSTALLATION_ROOT: $env:VCPKG_INSTALLATION_ROOT"
+        
+        # Verificar que el directorio raíz existe
+        if (-not (Test-Path $env:VCPKG_INSTALLATION_ROOT)) {
+          Write-Error "❌ VCPKG_INSTALLATION_ROOT no existe: $env:VCPKG_INSTALLATION_ROOT"
+          exit 1
+        }
+        
+        Write-Host "✅ Directorio raíz de vcpkg existe"
+        Write-Host "Contenido del directorio raíz:"
+        Get-ChildItem $env:VCPKG_INSTALLATION_ROOT | ForEach-Object { Write-Host "  - $($_.Name)" }
+        
+        # Verificar directorio installed
+        $installedDir = "$env:VCPKG_INSTALLATION_ROOT\installed"
+        if (-not (Test-Path $installedDir)) {
+          Write-Error "❌ Directorio installed no existe: $installedDir"
+          Write-Host "Las dependencias de vcpkg no se instalaron correctamente."
+          Write-Host "Esto puede deberse a:"
+          Write-Host "- Error en el paso anterior de instalación de vcpkg"
+          Write-Host "- Problemas de conectividad durante la descarga"
+          Write-Host "- Fallo en la compilación de las dependencias"
+          exit 1
+        }
+        
+        Write-Host "✅ Directorio installed existe"
+        Write-Host "Contenido del directorio installed:"
+        Get-ChildItem $installedDir | ForEach-Object { Write-Host "  - $($_.Name)" }
+        
+        # Verificar triplet específico
+        $tripletDir = "$installedDir\x64-windows-static"
+        if (-not (Test-Path $tripletDir)) {
+          Write-Error "❌ Directorio x64-windows-static no existe: $tripletDir"
+          exit 1
+        }
+        
+        Write-Host "✅ Directorio x64-windows-static existe"
+        Write-Host "Contenido del directorio x64-windows-static:"
+        Get-ChildItem $tripletDir | ForEach-Object { Write-Host "  - $($_.Name)" }
+        
+        # Verificar directorios críticos
+        $includeDir = "$tripletDir\include"
+        $libDir = "$tripletDir\lib"
+        
+        if (Test-Path $includeDir) {
+          Write-Host "✅ Directorio include existe"
+          $headerCount = (Get-ChildItem $includeDir -File).Count
+          Write-Host "  Headers encontrados: $headerCount"
+          
+          # Buscar headers de opus específicamente
+          $opusHeaders = Get-ChildItem $includeDir -Filter "*opus*"
+          if ($opusHeaders.Count -gt 0) {
+            Write-Host "✅ Headers de opus encontrados:"
+            $opusHeaders | ForEach-Object { Write-Host "    - $($_.Name)" }
+          } else {
+            Write-Host "⚠️ No se encontraron headers de opus"
+          }
+        } else {
+          Write-Error "❌ Directorio include no existe: $includeDir"
+          exit 1
+        }
+        
+        if (Test-Path $libDir) {
+          Write-Host "✅ Directorio lib existe"
+          $libCount = (Get-ChildItem $libDir -File).Count
+          Write-Host "  Librerías encontradas: $libCount"
+        } else {
+          Write-Error "❌ Directorio lib no existe: $libDir"
+          exit 1
+        }
+        
+        Write-Host "✅ Verificación de vcpkg completada exitosamente"
+      shell: powershell
+        
     - name: Create config directory
       run: mkdir -p rustdesk/src/ui
       shell: bash
@@ -341,10 +417,33 @@ jobs:
         # Verificar que el directorio installed existe
         $installedDir = "$env:VCPKG_INSTALLATION_ROOT\installed"
         if (-not (Test-Path $installedDir)) {
-          Write-Error "❌ Directorio installed no encontrado: $installedDir"
+          Write-Host "❌ Directorio installed no encontrado: $installedDir"
           Write-Host "Contenido del directorio raíz de vcpkg:"
           Get-ChildItem $env:VCPKG_INSTALLATION_ROOT | ForEach-Object { Write-Host "  - $($_.Name)" }
-          exit 1
+          
+          Write-Host "🔄 Intentando reinstalar dependencias de vcpkg..."
+          
+          # Cambiar al directorio rustdesk para acceder a vcpkg.json
+          Push-Location
+          Set-Location "."
+          
+          try {
+            # Intentar instalación manual de dependencias
+            & "$env:VCPKG_INSTALLATION_ROOT\vcpkg.exe" install --triplet x64-windows-static
+            
+            # Verificar nuevamente
+            if (Test-Path $installedDir) {
+              Write-Host "✅ Reinstalación exitosa"
+            } else {
+              Write-Error "❌ Reinstalación falló"
+              exit 1
+            }
+          } catch {
+            Write-Error "❌ Error durante la reinstalación: $($_.Exception.Message)"
+            exit 1
+          } finally {
+            Pop-Location
+          }
         }
         
         # Verificar que el directorio x64-windows-static existe
