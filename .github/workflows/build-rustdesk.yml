@@ -141,6 +141,13 @@ jobs:
         echo "Configurando Clang como compilador para mejorar rendimiento de libyuv..."
         echo "CC=$CC, CXX=$CXX, VCPKG_PLATFORM_TOOLSET=$VCPKG_PLATFORM_TOOLSET"
         
+        # Copiar archivo vcpkg.json al directorio rustdesk
+        echo "Copiando vcpkg.json al directorio rustdesk..."
+        cp vcpkg.json rustdesk/
+        
+        # Cambiar al directorio rustdesk para la instalación
+        cd rustdesk
+        
         # En modo manifiesto, vcpkg usa el archivo vcpkg.json del proyecto RustDesk
         # Instalar dependencias usando el modo manifiesto con Clang
         # Añadir flags de optimización para mejorar rendimiento
@@ -424,12 +431,18 @@ jobs:
           Write-Host "🔄 Intentando reinstalar dependencias de vcpkg..."
           
           # Cambiar al directorio rustdesk para acceder a vcpkg.json
-          Push-Location
-          Set-Location "."
-          
-          try {
-            # Intentar instalación manual de dependencias
-            & "$env:VCPKG_INSTALLATION_ROOT\vcpkg.exe" install --triplet x64-windows-static
+           Push-Location
+           Set-Location "rustdesk"
+           
+           try {
+             # Verificar que vcpkg.json existe
+             if (-not (Test-Path "vcpkg.json")) {
+               Write-Host "⚠️ vcpkg.json no encontrado, copiando desde directorio raíz..."
+               Copy-Item "..\vcpkg.json" "vcpkg.json" -Force
+             }
+             
+             # Intentar instalación manual de dependencias
+             & "$env:VCPKG_INSTALLATION_ROOT\vcpkg.exe" install --triplet x64-windows-static
             
             # Verificar nuevamente
             if (Test-Path $installedDir) {
