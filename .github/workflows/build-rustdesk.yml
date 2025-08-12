@@ -118,11 +118,25 @@ jobs:
         
     - name: Install vcpkg dependencies
       run: |
+        # Crear directorio rustdesk si no existe
+        mkdir -p rustdesk
+        
+        # Verificar que existe el archivo vcpkg.json en el directorio raíz
+        if [ ! -f "vcpkg.json" ]; then
+          echo "Error: vcpkg.json no encontrado en el directorio raíz"
+          exit 1
+        fi
+        
+        # Copiar archivo vcpkg.json al directorio rustdesk
+        echo "Copiando vcpkg.json al directorio rustdesk..."
+        cp vcpkg.json rustdesk/
+        
+        # Cambiar al directorio rustdesk
         cd rustdesk
         
-        # Verificar que existe el archivo vcpkg.json
+        # Verificar que el archivo se copió correctamente
         if [ ! -f "vcpkg.json" ]; then
-          echo "Error: vcpkg.json no encontrado en el directorio rustdesk"
+          echo "Error: vcpkg.json no se copió correctamente al directorio rustdesk"
           exit 1
         fi
         
@@ -140,13 +154,6 @@ jobs:
         
         echo "Configurando Clang como compilador para mejorar rendimiento de libyuv..."
         echo "CC=$CC, CXX=$CXX, VCPKG_PLATFORM_TOOLSET=$VCPKG_PLATFORM_TOOLSET"
-        
-        # Copiar archivo vcpkg.json al directorio rustdesk
-        echo "Copiando vcpkg.json al directorio rustdesk..."
-        cp vcpkg.json rustdesk/
-        
-        # Cambiar al directorio rustdesk para la instalación
-        cd rustdesk
         
         # En modo manifiesto, vcpkg usa el archivo vcpkg.json del proyecto RustDesk
         # Instalar dependencias usando el modo manifiesto con Clang
