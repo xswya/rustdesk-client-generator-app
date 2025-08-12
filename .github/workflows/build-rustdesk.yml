@@ -65,6 +65,8 @@ jobs:
     runs-on: windows-latest
     
     steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
     - name: Checkout RustDesk
       uses: actions/checkout@v4
       with:
