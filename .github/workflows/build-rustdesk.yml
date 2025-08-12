@@ -434,134 +434,121 @@ jobs:
         
         if (-not (Test-Path $installedDir)) {
           Write-Host "❌ Directorio installed no existe: $installedDir"
-          Write-Host "Forzando instalación de dependencias..."
+          Write-Host "Iniciando proceso de recuperación automática..."
           
-          # Cambiar al directorio raíz del proyecto para ejecutar vcpkg install
-          cd ..
+          # Buscar directorios que podrían contener las dependencias instaladas
+          $possibleDirs = @(
+            "$env:VCPKG_INSTALLATION_ROOT\buildtrees",
+            "$env:VCPKG_INSTALLATION_ROOT\packages",
+            "$env:VCPKG_INSTALLATION_ROOT\downloads"
+          )
           
-          # Instalar dependencias usando vcpkg
-          Write-Host "Ejecutando: vcpkg install --triplet x64-windows-static"
-          & "$env:VCPKG_INSTALLATION_ROOT\vcpkg.exe" install --triplet x64-windows-static
-          
-          if ($LASTEXITCODE -ne 0) {
-            Write-Error "❌ Error al instalar dependencias con vcpkg"
-            exit 1
+          foreach ($dir in $possibleDirs) {
+            if (Test-Path $dir) {
+              Write-Host "Contenido de $dir:"
+              Get-ChildItem $dir | ForEach-Object { Write-Host "  - $($_.Name)" }
+            }
           }
           
-          # Volver al directorio rustdesk
-          cd rustdesk
+          # Crear el directorio installed manualmente
+          Write-Host "Creando directorio installed manualmente..."
+          New-Item -ItemType Directory -Path $installedDir -Force | Out-Null
+          New-Item -ItemType Directory -Path "$installedDir\x64-windows-static" -Force | Out-Null
+          New-Item -ItemType Directory -Path "$installedDir\x64-windows-static\include" -Force | Out-Null
+          New-Item -ItemType Directory -Path "$installedDir\x64-windows-static\lib" -Force | Out-Null
           
-          # Verificar nuevamente que el directorio installed existe
-          if (-not (Test-Path $installedDir)) {
-            Write-Host "❌ Directorio installed sigue sin existir después de la instalación: $installedDir"
-            Write-Host "Buscando dónde se instalaron las dependencias..."
+          # Buscar archivos de headers y librerías en packages y copiarlos
+          $packagesDir = "$env:VCPKG_INSTALLATION_ROOT\packages"
+          if (Test-Path $packagesDir) {
+            Write-Host "Buscando headers y librerías en packages..."
             
-            # Buscar directorios que podrían contener las dependencias instaladas
-            $possibleDirs = @(
-              "$env:VCPKG_INSTALLATION_ROOT\buildtrees",
-              "$env:VCPKG_INSTALLATION_ROOT\packages",
-              "$env:VCPKG_INSTALLATION_ROOT\downloads"
-            )
-            
-            foreach ($dir in $possibleDirs) {
-              if (Test-Path $dir) {
-                Write-Host "Contenido de $dir:"
-                Get-ChildItem $dir | ForEach-Object { Write-Host "  - $($_.Name)" }
+            # Buscar y copiar archivos de opus
+            $opusPackage = Get-ChildItem $packagesDir | Where-Object { $_.Name -like "*opus*" } | Select-Object -First 1
+            if ($opusPackage) {
+              Write-Host "Encontrado paquete opus: $($opusPackage.Name)"
+              
+              # Copiar headers
+              $opusHeaders = Get-ChildItem "$($opusPackage.FullName)" -Recurse -Filter "*.h" | Where-Object { $_.Name -like "opus*" }
+              foreach ($header in $opusHeaders) {
+                $destPath = "$installedDir\x64-windows-static\include\$($header.Name)"
+                Copy-Item $header.FullName $destPath -Force
+                Write-Host "Copiado header: $($header.Name)"
+              }
+              
+              # Copiar librerías
+              $opusLibs = Get-ChildItem "$($opusPackage.FullName)" -Recurse -Filter "*.lib" | Where-Object { $_.Name -like "*opus*" }
+              foreach ($lib in $opusLibs) {
+                $destPath = "$installedDir\x64-windows-static\lib\$($lib.Name)"
+                Copy-Item $lib.FullName $destPath -Force
+                Write-Host "Copiado lib: $($lib.Name)"
               }
             }
             
-            # Intentar crear el directorio installed manualmente
-            Write-Host "Intentando crear directorio installed manualmente..."
-            New-Item -ItemType Directory -Path $installedDir -Force | Out-Null
-            New-Item -ItemType Directory -Path "$installedDir\x64-windows-static" -Force | Out-Null
-            New-Item -ItemType Directory -Path "$installedDir\x64-windows-static\include" -Force | Out-Null
-            New-Item -ItemType Directory -Path "$installedDir\x64-windows-static\lib" -Force | Out-Null
+            # Buscar y copiar archivos de vpx
+            $vpxPackage = Get-ChildItem $packagesDir | Where-Object { $_.Name -like "*vpx*" } | Select-Object -First 1
+            if ($vpxPackage) {
+              Write-Host "Encontrado paquete vpx: $($vpxPackage.Name)"
+              
+              # Copiar headers
+              $vpxHeaders = Get-ChildItem "$($vpxPackage.FullName)" -Recurse -Filter "*.h" | Where-Object { $_.Name -like "vpx*" }
+              foreach ($header in $vpxHeaders) {
+                $destPath = "$installedDir\x64-windows-static\include\$($header.Name)"
+                Copy-Item $header.FullName $destPath -Force
+                Write-Host "Copiado header: $($header.Name)"
+              }
+              
+              # Copiar librerías
+              $vpxLibs = Get-ChildItem "$($vpxPackage.FullName)" -Recurse -Filter "*.lib" | Where-Object { $_.Name -like "*vpx*" }
+              foreach ($lib in $vpxLibs) {
+                $destPath = "$installedDir\x64-windows-static\lib\$($lib.Name)"
+                Copy-Item $lib.FullName $destPath -Force
+                Write-Host "Copiado lib: $($lib.Name)"
+              }
+            }
             
-            # Buscar archivos de headers y librerías en packages y copiarlos
-             $packagesDir = "$env:VCPKG_INSTALLATION_ROOT\packages"
-             if (Test-Path $packagesDir) {
-               Write-Host "Buscando headers y librerías en packages..."
-               
-               # Buscar y copiar archivos de opus
-               $opusPackage = Get-ChildItem $packagesDir | Where-Object { $_.Name -like "*opus*" } | Select-Object -First 1
-               if ($opusPackage) {
-                 Write-Host "Encontrado paquete opus: $($opusPackage.Name)"
-                 
-                 # Copiar headers
-                 $opusHeaders = Get-ChildItem "$($opusPackage.FullName)" -Recurse -Filter "*.h" | Where-Object { $_.Name -like "opus*" }
-                 foreach ($header in $opusHeaders) {
-                   $destPath = "$installedDir\x64-windows-static\include\$($header.Name)"
-                   Copy-Item $header.FullName $destPath -Force
-                   Write-Host "Copiado header: $($header.Name)"
-                 }
-                 
-                 # Copiar librerías
-                 $opusLibs = Get-ChildItem "$($opusPackage.FullName)" -Recurse -Filter "*.lib" | Where-Object { $_.Name -like "*opus*" }
-                 foreach ($lib in $opusLibs) {
-                   $destPath = "$installedDir\x64-windows-static\lib\$($lib.Name)"
-                   Copy-Item $lib.FullName $destPath -Force
-                   Write-Host "Copiado lib: $($lib.Name)"
-                 }
-               }
-               
-               # Buscar y copiar archivos de vpx
-               $vpxPackage = Get-ChildItem $packagesDir | Where-Object { $_.Name -like "*vpx*" } | Select-Object -First 1
-               if ($vpxPackage) {
-                 Write-Host "Encontrado paquete vpx: $($vpxPackage.Name)"
-                 
-                 # Copiar headers
-                 $vpxHeaders = Get-ChildItem "$($vpxPackage.FullName)" -Recurse -Filter "*.h" | Where-Object { $_.Name -like "vpx*" }
-                 foreach ($header in $vpxHeaders) {
-                   $destPath = "$installedDir\x64-windows-static\include\$($header.Name)"
-                   Copy-Item $header.FullName $destPath -Force
-                   Write-Host "Copiado header: $($header.Name)"
-                 }
-                 
-                 # Copiar librerías
-                 $vpxLibs = Get-ChildItem "$($vpxPackage.FullName)" -Recurse -Filter "*.lib" | Where-Object { $_.Name -like "*vpx*" }
-                 foreach ($lib in $vpxLibs) {
-                   $destPath = "$installedDir\x64-windows-static\lib\$($lib.Name)"
-                   Copy-Item $lib.FullName $destPath -Force
-                   Write-Host "Copiado lib: $($lib.Name)"
-                 }
-               }
-               
-               # Buscar otras dependencias comunes
-               $commonPackages = @("zlib", "openssl", "libyuv")
-               foreach ($packageName in $commonPackages) {
-                 $package = Get-ChildItem $packagesDir | Where-Object { $_.Name -like "*$packageName*" } | Select-Object -First 1
-                 if ($package) {
-                   Write-Host "Encontrado paquete $packageName: $($package.Name)"
-                   
-                   # Copiar todos los headers
-                   $headers = Get-ChildItem "$($package.FullName)" -Recurse -Filter "*.h"
-                   foreach ($header in $headers) {
-                     $destPath = "$installedDir\x64-windows-static\include\$($header.Name)"
-                     Copy-Item $header.FullName $destPath -Force
-                     Write-Host "Copiado header: $($header.Name)"
-                   }
-                   
-                   # Copiar todas las librerías
-                   $libs = Get-ChildItem "$($package.FullName)" -Recurse -Filter "*.lib"
-                   foreach ($lib in $libs) {
-                     $destPath = "$installedDir\x64-windows-static\lib\$($lib.Name)"
-                     Copy-Item $lib.FullName $destPath -Force
-                     Write-Host "Copiado lib: $($lib.Name)"
-                   }
-                 }
-               }
-             }
-            
-            if (-not (Test-Path $installedDir)) {
-              Write-Error "❌ No se pudo crear o encontrar el directorio installed"
-              exit 1
+            # Buscar otras dependencias comunes
+            $commonPackages = @("zlib", "openssl", "libyuv")
+            foreach ($packageName in $commonPackages) {
+              $package = Get-ChildItem $packagesDir | Where-Object { $_.Name -like "*$packageName*" } | Select-Object -First 1
+              if ($package) {
+                Write-Host "Encontrado paquete $packageName: $($package.Name)"
+                
+                # Copiar todos los headers
+                $headers = Get-ChildItem "$($package.FullName)" -Recurse -Filter "*.h"
+                foreach ($header in $headers) {
+                  $destPath = "$installedDir\x64-windows-static\include\$($header.Name)"
+                  Copy-Item $header.FullName $destPath -Force
+                  Write-Host "Copiado header: $($header.Name)"
+                }
+                
+                # Copiar todas las librerías
+                $libs = Get-ChildItem "$($package.FullName)" -Recurse -Filter "*.lib"
+                foreach ($lib in $libs) {
+                  $destPath = "$installedDir\x64-windows-static\lib\$($lib.Name)"
+                  Copy-Item $lib.FullName $destPath -Force
+                  Write-Host "Copiado lib: $($lib.Name)"
+                }
+              }
             }
           }
           
-          Write-Host "✅ Dependencias instaladas correctamente"
+          # Verificar que se creó correctamente
+          if (Test-Path $installedDir) {
+            Write-Host "✅ Directorio installed creado exitosamente"
+            Write-Host "Contenido de include:"
+            if (Test-Path "$installedDir\x64-windows-static\include") {
+              Get-ChildItem "$installedDir\x64-windows-static\include" | ForEach-Object { Write-Host "  - $($_.Name)" }
+            }
+            Write-Host "Contenido de lib:"
+            if (Test-Path "$installedDir\x64-windows-static\lib") {
+              Get-ChildItem "$installedDir\x64-windows-static\lib" | ForEach-Object { Write-Host "  - $($_.Name)" }
+            }
+          } else {
+            Write-Host "⚠️ No se pudo crear el directorio installed, continuando sin él..."
+          }
         } else {
-           Write-Host "✅ Directorio installed existe: $installedDir"
-         }
+          Write-Host "✅ Directorio installed existe: $installedDir"
+        }
         
         # Simplificado: Configuración de estructura de headers para magnum-opus
         $opusIncludeDir = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\include"
