@@ -424,52 +424,26 @@ jobs:
           exit 1
         }
         
-        # SOLUCIÓN ESPECÍFICA PARA MAGNUM-OPUS: Crear estructura de directorios esperada
-        # magnum-opus busca opus/opus_multistream.h pero vcpkg instala directamente en include/
-        Write-Host "=== Configurando estructura de headers para magnum-opus ==="
+        # Simplificado: Configuración de estructura de headers para magnum-opus
         $opusIncludeDir = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\include"
         $opusSubDir = "$opusIncludeDir\opus"
-        
-        Write-Host "Directorio include base: $opusIncludeDir"
-        Write-Host "Directorio opus destino: $opusSubDir"
-        
-        # Verificar que el directorio installed existe
-        $installedDir = "$env:VCPKG_INSTALLATION_ROOT\installed"
-        if (-not (Test-Path $installedDir)) {
-          Write-Host "❌ Directorio installed no encontrado: $installedDir"
-          Write-Host "Contenido del directorio raíz de vcpkg:"
-          Get-ChildItem $env:VCPKG_INSTALLATION_ROOT | ForEach-Object { Write-Host "  - $($_.Name)" }
-          
-          Write-Host "🔄 Intentando reinstalar dependencias de vcpkg..."
-          
-          # Cambiar al directorio rustdesk para acceder a vcpkg.json
-           Push-Location
-           Set-Location "rustdesk"
-           
-           try {
-             # Verificar que vcpkg.json existe
-             if (-not (Test-Path "vcpkg.json")) {
-               Write-Host "⚠️ vcpkg.json no encontrado, copiando desde directorio raíz..."
-               Copy-Item "..\vcpkg.json" "vcpkg.json" -Force
-             }
-             
-             # Intentar instalación manual de dependencias
-             & "$env:VCPKG_INSTALLATION_ROOT\vcpkg.exe" install --triplet x64-windows-static
-            
-            # Verificar nuevamente
-            if (Test-Path $installedDir) {
-              Write-Host "✅ Reinstalación exitosa"
-            } else {
-              Write-Error "❌ Reinstalación falló"
-              exit 1
-            }
-          } catch {
-            Write-Error "❌ Error durante la reinstalación: $($_.Exception.Message)"
-            exit 1
-          } finally {
-            Pop-Location
-          }
+        if (-not (Test-Path $opusSubDir)) {
+        New-Item -ItemType Directory -Path $opusSubDir -Force | Out-Null
         }
+        $headers = @("opus.h", "opus_multistream.h", "opus_defines.h", "opus_types.h", "opus_custom.h")
+        foreach ($h in $headers) {
+        $src = "$opusIncludeDir\$h"
+        $dst = "$opusSubDir\$h"
+        if (Test-Path $src) {
+        Copy-Item $src $dst -Force
+        }
+        }
+        $critical = "$opusSubDir\opus_multistream.h"
+        if (-not (Test-Path $critical)) {
+        Write-Error "❌ CRÍTICO: opus_multistream.h no encontrado"
+        exit 1
+        }
+        Write-Host "✅ Estructura de headers configurada"
         
         # Verificar que el directorio x64-windows-static existe
         $tripletDir = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static"
@@ -592,20 +566,13 @@ jobs:
         
         # VERIFICACIÓN ADICIONAL: Probar que clang puede encontrar el header
         Write-Host "=== Verificando que clang puede encontrar opus_multistream.h ==="
-        $testCommand = "echo '#include <opus/opus_multistream.h>' | `"$env:CLANG_PATH`" -I`"$includeDir`" -I`"$includeDir\opus`" -E -"
-        Write-Host "Comando de prueba: $testCommand"
-        
-        try {
-          $testResult = Invoke-Expression $testCommand 2>&1
-          if ($LASTEXITCODE -eq 0) {
-            Write-Host "✅ Clang puede encontrar opus/opus_multistream.h correctamente"
-          } else {
-            Write-Host "⚠️ Clang tuvo problemas encontrando el header:"
-            Write-Host $testResult
-          }
-        } catch {
-          Write-Host "⚠️ No se pudo ejecutar la prueba de clang: $($_.Exception.Message)"
+        $testCommand = "echo '#include <opus/opus_multistream.h>' | `\"$env:CLANG_PATH`\" -I`\"$includeDir`\" -I`\"$includeDir\opus`\" -E -"
+        $testResult = Invoke-Expression $testCommand 2>&1
+        if ($LASTEXITCODE -ne 0) {
+          Write-Error "❌ Clang no puede encontrar el header: $testResult"
+          exit 1
         }
+        Write-Host "✅ Verificación de clang exitosa"
         
         # Variables adicionales para build scripts y compatibilidad
         $env:CPPFLAGS = "-I$includeDir -I$includeDir\opus -I$includeDir\vpx"
