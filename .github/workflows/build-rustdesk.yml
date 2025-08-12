@@ -122,14 +122,17 @@ jobs:
         mkdir -p rustdesk
         
         # Verificar que existe el archivo vcpkg.json en el directorio raíz
-        if [ ! -f "vcpkg.json" ]; then
+        if [ ! -f "$GITHUB_WORKSPACE/vcpkg.json" ]; then
           echo "Error: vcpkg.json no encontrado en el directorio raíz"
+          echo "Directorio actual: $(pwd)"
+          echo "Contenido del directorio actual:"
+          ls -la
           exit 1
         fi
         
         # Copiar archivo vcpkg.json al directorio rustdesk
         echo "Copiando vcpkg.json al directorio rustdesk..."
-        cp vcpkg.json rustdesk/
+        cp "$GITHUB_WORKSPACE/vcpkg.json" rustdesk/
         
         # Cambiar al directorio rustdesk
         cd rustdesk
