@@ -418,11 +418,49 @@ jobs:
         
         Write-Host "✅ VCPKG_INSTALLATION_ROOT configurado: $env:VCPKG_INSTALLATION_ROOT"
         
-        # Verificar que el directorio raíz de vcpkg existe
-        if (-not (Test-Path $env:VCPKG_INSTALLATION_ROOT)) {
-          Write-Error "❌ Directorio raíz de vcpkg no encontrado: $env:VCPKG_INSTALLATION_ROOT"
+        # VERIFICACIÓN CRÍTICA: Verificar que el directorio installed existe
+        $installedDir = "$env:VCPKG_INSTALLATION_ROOT\installed"
+        Write-Host "=== Verificación post-instalación de vcpkg ==="
+        Write-Host "VCPKG_INSTALLATION_ROOT: $env:VCPKG_INSTALLATION_ROOT"
+        
+        if (Test-Path $env:VCPKG_INSTALLATION_ROOT) {
+          Write-Host "✅ Directorio raíz de vcpkg existe"
+          Write-Host "Contenido del directorio raíz:"
+          Get-ChildItem $env:VCPKG_INSTALLATION_ROOT | ForEach-Object { Write-Host "  - $($_.Name)" }
+        } else {
+          Write-Error "❌ Directorio raíz de vcpkg no existe: $env:VCPKG_INSTALLATION_ROOT"
           exit 1
         }
+        
+        if (-not (Test-Path $installedDir)) {
+          Write-Host "❌ Directorio installed no existe: $installedDir"
+          Write-Host "Forzando instalación de dependencias..."
+          
+          # Cambiar al directorio raíz del proyecto para ejecutar vcpkg install
+          cd ..
+          
+          # Instalar dependencias usando vcpkg
+          Write-Host "Ejecutando: vcpkg install --triplet x64-windows-static"
+          & "$env:VCPKG_INSTALLATION_ROOT\vcpkg.exe" install --triplet x64-windows-static
+          
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "❌ Error al instalar dependencias con vcpkg"
+            exit 1
+          }
+          
+          # Volver al directorio rustdesk
+          cd rustdesk
+          
+          # Verificar nuevamente que el directorio installed existe
+          if (-not (Test-Path $installedDir)) {
+            Write-Error "❌ Directorio installed sigue sin existir después de la instalación: $installedDir"
+            exit 1
+          }
+          
+          Write-Host "✅ Dependencias instaladas correctamente"
+        } else {
+           Write-Host "✅ Directorio installed existe: $installedDir"
+         }
         
         # Simplificado: Configuración de estructura de headers para magnum-opus
         $opusIncludeDir = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\include"
