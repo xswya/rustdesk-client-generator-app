@@ -1,15 +1,50 @@
 {
-  "name": "rustdesk-client",
-  "version": "1.0.0",
-  "description": "RustDesk client dependencies",
   "dependencies": [
-    "opus",
-    "libvpx",
-    "libyuv",
-    "openssl",
-    "zlib",
-    "libsodium",
-    "protobuf"
+    {
+      "name": "aom",
+      "host": true
+    },
+    {
+      "name": "aom",
+      "host": false
+    },
+    {
+      "name": "libjpeg-turbo",
+      "host": true
+    },
+    {
+      "name": "libjpeg-turbo",
+      "host": false
+    },
+    {
+      "name": "opus",
+      "host": true
+    },
+    {
+      "name": "opus",
+      "host": false
+    },
+    {
+      "name": "libvpx",
+      "host": true
+    },
+    {
+      "name": "libvpx",
+      "host": false
+    },
+    {
+      "name": "libyuv",
+      "host": true
+    },
+    {
+      "name": "libyuv",
+      "host": false
+    }
   ],
-  "builtin-baseline": "d30fdf55cfca16e12bc3ad99cbc615997014b61b"
+  "vcpkg-configuration": {
+    "default-registry": {
+      "kind": "builtin",
+      "baseline": "6f29f12e82a8293156836ad81cc9bf5af41fe836"
+    }
+  }
 }

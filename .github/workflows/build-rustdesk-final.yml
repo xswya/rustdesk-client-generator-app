@@ -1,0 +1,421 @@
+name: Build RustDesk Client (Final)
+
+on:
+  workflow_dispatch:
+    inputs:
+      config_json:
+        description: 'Configuration JSON'
+        required: true
+        type: string
+      executable_name:
+        description: 'Executable name'
+        required: true
+        type: string
+        default: 'rustdesk-custom'
+      rustdesk_branch:
+        description: 'RustDesk branch'
+        required: false
+        type: string
+        default: 'master'
+      enable_portable:
+        description: 'Enable portable mode'
+        required: false
+        type: boolean
+        default: true
+      include_installer:
+        description: 'Include installer'
+        required: false
+        type: boolean
+        default: true
+      enable_debug:
+        description: 'Enable debug mode'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  CARGO_TERM_COLOR: always
+  VCPKG_DEFAULT_TRIPLET: x64-windows-static
+  VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+  VCPKG_COMMIT_ID: "6f29f12e82a8293156836ad81cc9bf5af41fe836"
+  RUST_VERSION: "1.75"
+  LLVM_VERSION: "15.0.6"
+
+jobs:
+  build-windows:
+    runs-on: windows-2022
+    timeout-minutes: 180
+    
+    steps:
+    - name: Export GitHub Actions cache environment variables
+      uses: actions/github-script@v6
+      with:
+        script: |
+          core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+          core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+    
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Checkout RustDesk
+      uses: actions/checkout@v4
+      with:
+        repository: rustdesk/rustdesk
+        ref: ${{ inputs.rustdesk_branch }}
+        submodules: recursive
+        path: rustdesk
+        
+    - name: Install LLVM and Clang
+      uses: KyleMayes/install-llvm-action@v1
+      with:
+        version: ${{ env.LLVM_VERSION }}
+        
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@v1
+      with:
+        toolchain: ${{ env.RUST_VERSION }}
+        targets: x86_64-pc-windows-msvc
+        components: "rustfmt"
+        
+    - uses: Swatinem/rust-cache@v2
+      with:
+        prefix-key: windows-2022
+        workspaces: "rustdesk -> target"
+        
+    - name: Setup vcpkg with Github Actions binary cache
+      uses: lukka/run-vcpkg@v11
+      with:
+        vcpkgDirectory: C:\vcpkg
+        vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
+        doNotCache: false
+        
+    - name: Install system dependencies
+      shell: powershell
+      run: |
+        Write-Host "=== Installing system dependencies ==="
+        choco install nsis -y --no-progress
+        Write-Host "✅ System dependencies installed"
+        
+    - name: Setup vcpkg environment
+      shell: powershell
+      run: |
+        Write-Host "=== Setting up vcpkg environment ==="
+        
+        # Copy our vcpkg.json to rustdesk directory
+        Write-Host "Copying vcpkg.json to rustdesk directory..."
+        $source = "$env:GITHUB_WORKSPACE\vcpkg.json"
+        $dest = "$env:GITHUB_WORKSPACE\rustdesk\vcpkg.json"
+        
+        if (-not (Test-Path $source)) {
+          Write-Host "❌ Source vcpkg.json not found: $source"
+          exit 1
+        }
+        
+        Copy-Item $source $dest -Force
+        Write-Host "✅ vcpkg.json copied successfully"
+        
+    - name: Install vcpkg dependencies
+      env:
+        VCPKG_DEFAULT_HOST_TRIPLET: x64-windows-static
+      shell: bash
+      run: |
+        cd rustdesk
+        if ! $VCPKG_ROOT/vcpkg \
+          install \
+          --triplet x64-windows-static \
+          --x-install-root="$VCPKG_ROOT/installed"; then
+          find "${VCPKG_ROOT}/" -name "*.log" | while read -r _1; do
+            echo "$_1:"
+            echo "======"
+            cat "$_1"
+            echo "======"
+            echo ""
+          done
+          exit 1
+        fi
+        
+    - name: Apply configuration
+      shell: powershell
+      run: |
+        Write-Host "=== Applying configuration ==="
+        
+        cd "$env:GITHUB_WORKSPACE\rustdesk"
+        
+        # Create config directory
+        New-Item -Path "src\ui" -ItemType Directory -Force -ErrorAction SilentlyContinue | Out-Null
+        
+        # Write config JSON
+        '${{ inputs.config_json }}' | Out-File -FilePath "src\ui\config.json" -Encoding UTF8
+        
+        # Parse configuration
+        try {
+          $config = '${{ inputs.config_json }}' | ConvertFrom-Json
+          Write-Host "✅ Configuration parsed successfully"
+        } catch {
+          Write-Host "❌ Failed to parse configuration JSON: $($_.Exception.Message)"
+          exit 1
+        }
+        
+        # Create Rust config file
+        $rustConfig = @"
+// Auto-generated configuration
+pub const RENDEZVOUS_SERVER: &str = "$($config.server.RENDEZVOUS_SERVER)";
+pub const RELAY_SERVER: &str = "$($config.server.RELAY_SERVER)";
+pub const API_SERVER: &str = "$($config.server.API_SERVER)";
+pub const KEY: &str = "$($config.server.KEY)";
+pub const PRODUCT_NAME: &str = "$($config.branding.PRODUCT_NAME)";
+pub const APP_NAME: &str = "$($config.branding.APP_NAME)";
+"@
+        
+        $rustConfig | Out-File -FilePath "src\config.rs" -Encoding UTF8
+        Write-Host "✅ Rust config created"
+        
+        # Update Cargo.toml carefully - only update if different from rustdesk
+        if (Test-Path "Cargo.toml") {
+          $cargoContent = Get-Content "Cargo.toml" -Raw
+          
+          if ($config.branding.APP_NAME -ne "rustdesk") {
+            $cargoContent = $cargoContent -replace 'name = "rustdesk"', "name = `"$($config.branding.APP_NAME)`""
+            Write-Host "✅ Updated package name in Cargo.toml"
+          }
+          
+          $cargoContent | Out-File -FilePath "Cargo.toml" -Encoding UTF8
+        }
+        
+        Write-Host "✅ Configuration applied successfully"
+        
+    - name: Build RustDesk
+      shell: powershell
+      run: |
+        Write-Host "=== Building RustDesk ==="
+        
+        cd "$env:GITHUB_WORKSPACE\rustdesk"
+        
+        # Set environment variables for build
+        $env:VCPKG_ROOT = "C:\vcpkg"
+        $env:VCPKG_DEFAULT_TRIPLET = "x64-windows-static"
+        $env:LIBCLANG_PATH = "$env:PROGRAMFILES\LLVM\bin"
+        $env:RUSTFLAGS = "-C target-feature=+crt-static"
+        $env:RUST_BACKTRACE = "1"
+        
+        Write-Host "Starting Cargo build..."
+        Write-Host "Build mode: $('${{ inputs.enable_debug }}' -eq 'true' ? 'Debug' : 'Release')"
+        
+        if ("${{ inputs.enable_debug }}" -eq "true") {
+          Write-Host "🔧 Building in debug mode..."
+          cargo build --features inline --verbose
+        } else {
+          Write-Host "🏗️ Building in release mode..."
+          cargo build --release --features inline --verbose
+        }
+        
+        if ($LASTEXITCODE -ne 0) {
+          Write-Host "❌ Build failed with exit code $LASTEXITCODE"
+          exit $LASTEXITCODE
+        }
+        
+        Write-Host "✅ Build completed successfully!"
+        
+    - name: Prepare artifacts
+      shell: powershell
+      run: |
+        Write-Host "=== Preparing artifacts ==="
+        
+        cd "$env:GITHUB_WORKSPACE\rustdesk"
+        
+        try {
+          $config = '${{ inputs.config_json }}' | ConvertFrom-Json
+        } catch {
+          Write-Host "❌ Failed to parse config JSON"
+          exit 1
+        }
+        
+        $executableName = "${{ inputs.executable_name }}"
+        $buildDir = if ("${{ inputs.enable_debug }}" -eq "true") { "target\debug" } else { "target\release" }
+        
+        Write-Host "Looking for executable in: $buildDir"
+        
+        # Find the built executable
+        $possibleExes = @(
+          "$buildDir\rustdesk.exe",
+          "$buildDir\RustDesk.exe",
+          "$buildDir\$($config.branding.APP_NAME).exe"
+        )
+        
+        $builtExecutable = ""
+        foreach ($exe in $possibleExes) {
+          if (Test-Path $exe) {
+            $builtExecutable = $exe
+            Write-Host "✅ Found executable: $exe"
+            break
+          }
+        }
+        
+        if (-not $builtExecutable) {
+          Write-Host "❌ No executable found. Available files in $buildDir:"
+          Get-ChildItem $buildDir -Filter "*.exe" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "  $($_.Name)" }
+          exit 1
+        }
+        
+        # Copy with custom name
+        $finalExe = "$buildDir\$executableName.exe"
+        if ($builtExecutable -ne $finalExe) {
+          Copy-Item $builtExecutable $finalExe -Force
+          Write-Host "✅ Copied executable to: $finalExe"
+        }
+        
+        # Create portable marker if needed
+        if ("${{ inputs.enable_portable }}" -eq "true") {
+          New-Item -Path "$buildDir\$executableName.portable" -ItemType File -Force -ErrorAction SilentlyContinue | Out-Null
+          Write-Host "✅ Created portable marker"
+        }
+        
+        # Verify final executable
+        if (Test-Path $finalExe) {
+          $fileInfo = Get-Item $finalExe
+          Write-Host "✅ Final executable ready:"
+          Write-Host "  Path: $($fileInfo.FullName)"
+          Write-Host "  Size: $([math]::Round($fileInfo.Length / 1MB, 2)) MB"
+        }
+        
+    - name: Create installer
+      if: inputs.include_installer == true
+      shell: powershell
+      run: |
+        Write-Host "=== Creating installer ==="
+        
+        cd "$env:GITHUB_WORKSPACE\rustdesk"
+        
+        try {
+          $config = '${{ inputs.config_json }}' | ConvertFrom-Json
+        } catch {
+          Write-Host "❌ Failed to parse config JSON for installer"
+          exit 1
+        }
+        
+        $executableName = "${{ inputs.executable_name }}"
+        $buildDir = if ("${{ inputs.enable_debug }}" -eq "true") { "target\debug" } else { "target\release" }
+        
+        # Verify NSIS is available
+        $nsisPath = "C:\Program Files (x86)\NSIS\makensis.exe"
+        if (-not (Test-Path $nsisPath)) {
+          Write-Host "❌ NSIS not found at expected location: $nsisPath"
+          exit 1
+        }
+        
+        # Create NSIS script
+        $nsisScript = @"
+!define PRODUCT_NAME "$($config.branding.PRODUCT_NAME)"
+!define PRODUCT_VERSION "$($config.build.VERSION)"
+!define PRODUCT_PUBLISHER "$($config.branding.PRODUCT_NAME)"
+
+SetCompressor lzma
+RequestExecutionLevel admin
+
+Name "`${PRODUCT_NAME}"
+OutFile "$executableName-installer.exe"
+InstallDir "`$PROGRAMFILES\`${PRODUCT_NAME}"
+
+Section "MainSection" SEC01
+  SetOutPath "`$INSTDIR"
+  File "$buildDir\$executableName.exe"
+  
+  # Create shortcuts
+  CreateDirectory "`$SMPROGRAMS\`${PRODUCT_NAME}"
+  CreateShortCut "`$SMPROGRAMS\`${PRODUCT_NAME}\`${PRODUCT_NAME}.lnk" "`$INSTDIR\$executableName.exe"
+  CreateShortCut "`$DESKTOP\`${PRODUCT_NAME}.lnk" "`$INSTDIR\$executableName.exe"
+  
+  # Write uninstaller
+  WriteUninstaller "`$INSTDIR\Uninstall.exe"
+  
+  # Registry entries
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\`${PRODUCT_NAME}" "DisplayName" "`${PRODUCT_NAME}"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\`${PRODUCT_NAME}" "UninstallString" "`$INSTDIR\Uninstall.exe"
+SectionEnd
+
+Section "Uninstall"
+  Delete "`$INSTDIR\$executableName.exe"
+  Delete "`$INSTDIR\Uninstall.exe"
+  RMDir "`$INSTDIR"
+  Delete "`$SMPROGRAMS\`${PRODUCT_NAME}\`${PRODUCT_NAME}.lnk"
+  Delete "`$DESKTOP\`${PRODUCT_NAME}.lnk"
+  RMDir "`$SMPROGRAMS\`${PRODUCT_NAME}"
+  DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\`${PRODUCT_NAME}"
+SectionEnd
+"@
+        
+        $nsisScript | Out-File -FilePath "installer.nsi" -Encoding UTF8
+        Write-Host "✅ NSIS script created"
+        
+        # Create installer
+        Write-Host "Compiling installer with NSIS..."
+        & $nsisPath "installer.nsi"
+        
+        if ($LASTEXITCODE -eq 0 -and (Test-Path "$executableName-installer.exe")) {
+          $installerInfo = Get-Item "$executableName-installer.exe"
+          Write-Host "✅ Installer created successfully:"
+          Write-Host "  Path: $($installerInfo.FullName)"
+          Write-Host "  Size: $([math]::Round($installerInfo.Length / 1MB, 2)) MB"
+        } else {
+          Write-Host "⚠️ Installer creation failed, but continuing..."
+        }
+        
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: rustdesk-${{ inputs.executable_name }}-windows-${{ github.run_number }}
+        path: |
+          rustdesk/target/debug/${{ inputs.executable_name }}.exe
+          rustdesk/target/debug/${{ inputs.executable_name }}.portable
+          rustdesk/target/release/${{ inputs.executable_name }}.exe
+          rustdesk/target/release/${{ inputs.executable_name }}.portable
+          rustdesk/${{ inputs.executable_name }}-installer.exe
+        retention-days: 30
+        if-no-files-found: warn
+        
+    - name: Create and upload build info
+      shell: powershell
+      run: |
+        try {
+          $config = '${{ inputs.config_json }}' | ConvertFrom-Json
+          
+          $buildInfo = @{
+            executable_name = "${{ inputs.executable_name }}"
+            version = $config.build.VERSION
+            architecture = "x86_64"
+            platform = "windows"
+            portable = "${{ inputs.enable_portable }}"
+            installer = "${{ inputs.include_installer }}"
+            debug_mode = "${{ inputs.enable_debug }}"
+            server_config = @{
+              rendezvous_server = $config.server.RENDEZVOUS_SERVER
+              relay_server = $config.server.RELAY_SERVER
+              api_server = $config.server.API_SERVER
+            }
+            branding = @{
+              product_name = $config.branding.PRODUCT_NAME
+              app_name = $config.branding.APP_NAME
+            }
+            build_info = @{
+              rustdesk_branch = "${{ inputs.rustdesk_branch }}"
+              build_date = (Get-Date -Format "yyyy-MM-dd HH:mm:ss UTC")
+              build_number = "${{ github.run_number }}"
+              workflow_run_id = "${{ github.run_id }}"
+            }
+          }
+          
+          $buildInfo | ConvertTo-Json -Depth 4 | Out-File -FilePath "build-info.json" -Encoding UTF8
+          Write-Host "✅ Build info created successfully"
+          
+        } catch {
+          Write-Host "⚠️ Failed to create build info: $($_.Exception.Message)"
+        }
+        
+    - name: Upload build info
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: build-info-${{ inputs.executable_name }}-${{ github.run_number }}
+        path: build-info.json
+        retention-days: 30
+        if-no-files-found: ignore
