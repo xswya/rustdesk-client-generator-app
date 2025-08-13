@@ -17,11 +17,24 @@ on:
         required: false
         type: string
         default: 'master'
+      target_arch:
+        description: 'Target architecture'
+        required: false
+        type: choice
+        options:
+          - x86_64
+          - aarch64
+        default: 'x86_64'
       enable_portable:
         description: 'Enable portable mode'
         required: false
         type: boolean
         default: false
+      include_installer:
+        description: 'Include installer (alias for create_installer)'
+        required: false
+        type: boolean
+        default: true
       create_installer:
         description: 'Create installer'
         required: false
@@ -258,8 +271,9 @@ jobs:
           Write-Host "✅ Copied executable to: $finalExe"
         }
         
-        # Create installer if requested
-        if ("${{ inputs.create_installer }}" -eq "true") {
+        # Create installer if requested (use include_installer if provided, otherwise fallback to create_installer)
+        $shouldCreateInstaller = if ("${{ inputs.include_installer }}" -ne "") { "${{ inputs.include_installer }}" } else { "${{ inputs.create_installer }}" }
+        if ($shouldCreateInstaller -eq "true") {
           Write-Host "Creating installer..."
           
           # Create installer script file
