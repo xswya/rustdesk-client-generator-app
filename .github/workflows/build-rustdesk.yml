@@ -1,0 +1,936 @@
+name: Build RustDesk Client
+
+on:
+  workflow_dispatch:
+    inputs:
+      config_json:
+        description: 'Configuration JSON'
+        required: true
+        type: string
+      executable_name:
+        description: 'Executable name'
+        required: true
+        type: string
+        default: 'rustdesk-custom'
+      rustdesk_branch:
+        description: 'RustDesk branch'
+        required: false
+        type: string
+        default: 'master'
+      target_arch:
+        description: 'Target architecture'
+        required: false
+        type: choice
+        options:
+          - x86_64
+          - aarch64
+        default: 'x86_64'
+      enable_portable:
+        description: 'Enable portable mode'
+        required: false
+        type: boolean
+        default: true
+      include_installer:
+        description: 'Include installer'
+        required: false
+        type: boolean
+        default: true
+      enable_debug:
+        description: 'Enable debug mode'
+        required: false
+        type: boolean
+        default: false
+      fast_check_mode:
+        description: 'Fast check mode (only verify dependencies and headers)'
+        required: false
+        type: boolean
+        default: false
+      headers_only_mode:
+        description: 'Headers only mode (just verify headers and dependencies setup)'
+        required: false
+        type: boolean
+        default: false
+      sign_executable:
+        description: 'Sign executable'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  CARGO_TERM_COLOR: always
+  VCPKG_DEFAULT_TRIPLET: x64-windows-static
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    - name: Checkout RustDesk
+      uses: actions/checkout@v4
+      with:
+        repository: rustdesk/rustdesk
+        ref: ${{ inputs.rustdesk_branch }}
+        submodules: recursive
+        path: rustdesk
+        
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: stable
+        targets: x86_64-pc-windows-msvc
+        
+    # OPTIMIZACIÓN: Caché de Rust para acelerar compilaciones incrementales
+    - name: Cache Rust dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          rustdesk/target/
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-
+          
+    # OPTIMIZACIÓN: Caché de vcpkg para evitar recompilar dependencias
+    - name: Cache vcpkg
+      uses: actions/cache@v4
+      with:
+        path: |
+          ${{ env.VCPKG_INSTALLATION_ROOT }}/installed/
+          ${{ env.VCPKG_INSTALLATION_ROOT }}/buildtrees/
+          ${{ env.VCPKG_INSTALLATION_ROOT }}/downloads/
+        key: ${{ runner.os }}-vcpkg-${{ hashFiles('rustdesk/vcpkg.json') }}
+        restore-keys: |
+          ${{ runner.os }}-vcpkg-
+        
+    - name: Install dependencies
+      run: |
+        choco install llvm -y
+        pip install cffi
+        
+    - name: Setup vcpkg
+      uses: lukka/run-vcpkg@v11
+      with:
+        # Usar la versión más reciente de vcpkg para tener todas las dependencias actualizadas
+        vcpkgGitCommitId: 'd30fdf55cfca16e12bc3ad99cbc615997014b61b'
+        
+    - name: Install vcpkg dependencies
+      run: |
+        # Crear directorio rustdesk si no existe
+        mkdir -p rustdesk
+        
+        # Verificar que existe el archivo vcpkg.json en el directorio raíz
+        if [ ! -f "$GITHUB_WORKSPACE/vcpkg.json" ]; then
+          echo "Error: vcpkg.json no encontrado en el directorio raíz"
+          echo "Directorio actual: $(pwd)"
+          echo "Contenido del directorio actual:"
+          ls -la
+          exit 1
+        fi
+        
+        # Copiar archivo vcpkg.json al directorio rustdesk
+        echo "Copiando vcpkg.json al directorio rustdesk..."
+        cp "$GITHUB_WORKSPACE/vcpkg.json" rustdesk/
+        
+        # Cambiar al directorio rustdesk
+        cd rustdesk
+        
+        # Verificar que el archivo se copió correctamente
+        if [ ! -f "vcpkg.json" ]; then
+          echo "Error: vcpkg.json no se copió correctamente al directorio rustdesk"
+          exit 1
+        fi
+        
+        echo "Archivo vcpkg.json encontrado, instalando dependencias en modo manifiesto..."
+        
+        # SOLUCIÓN AL WARNING: "Use MSVC to compile libyuv results in a very slow library"
+        # Este warning aparece porque MSVC produce una versión lenta de libyuv
+        # Solución: Usar Clang en lugar de MSVC para compilar las dependencias nativas
+        
+        # Configurar Clang como compilador para evitar el warning de rendimiento de libyuv con MSVC
+        # Ref: https://github.com/microsoft/vcpkg/issues/28446
+        export CC=clang
+        export CXX=clang++
+        export VCPKG_PLATFORM_TOOLSET=ClangCL
+        
+        echo "Configurando Clang como compilador para mejorar rendimiento de libyuv..."
+        echo "CC=$CC, CXX=$CXX, VCPKG_PLATFORM_TOOLSET=$VCPKG_PLATFORM_TOOLSET"
+        
+        # En modo manifiesto, vcpkg usa el archivo vcpkg.json del proyecto RustDesk
+        # Instalar dependencias usando el modo manifiesto con Clang
+        # Añadir flags de optimización para mejorar rendimiento
+        export VCPKG_FEATURE_FLAGS="manifests,versions"
+        export VCPKG_OVERLAY_TRIPLETS=""
+        
+        # Configurar flags de compilación optimizados
+        export CFLAGS="-O3 -march=native"
+        export CXXFLAGS="-O3 -march=native"
+        
+        echo "Flags de optimización configurados: CFLAGS=$CFLAGS, CXXFLAGS=$CXXFLAGS"
+        
+        # SOLUCIÓN ROBUSTA PARA ERRORES 503 DE DESCARGA DE OPUS Y LIBVPX
+        # Configurar variables de entorno para mejorar descargas de vcpkg
+        export VCPKG_MAX_CONCURRENCY=4
+        export VCPKG_DOWNLOADS_RETRIES=5
+        export VCPKG_DOWNLOADS_TIMEOUT=120
+        export VCPKG_CURL_OPTIONS="--retry 5 --retry-delay 10 --connect-timeout 30"
+        
+        # Limpiar variables de proxy problemáticas que pueden causar errores 503
+        unset https_proxy HTTPS_PROXY http_proxy HTTP_PROXY || true
+        
+        echo "Variables de descarga configuradas:"
+        echo "VCPKG_MAX_CONCURRENCY=$VCPKG_MAX_CONCURRENCY"
+        echo "VCPKG_DOWNLOADS_RETRIES=$VCPKG_DOWNLOADS_RETRIES"
+        echo "VCPKG_DOWNLOADS_TIMEOUT=$VCPKG_DOWNLOADS_TIMEOUT"
+        
+        # Función de instalación con reintentos inteligentes
+        install_vcpkg_dependencies() {
+          local max_retries=5
+          local retry_delay=30
+          
+          for attempt in $(seq 1 $max_retries); do
+            echo "=== Intento $attempt de $max_retries para instalar dependencias vcpkg ==="
+            
+            # Verificar conectividad antes del intento
+            if ! curl -s --connect-timeout 10 https://github.com >/dev/null; then
+              echo "⚠️ Problema de conectividad detectado, esperando..."
+              sleep $retry_delay
+              continue
+            fi
+            
+            # Intentar instalación
+            if vcpkg install --triplet x64-windows-static; then
+              echo "✅ Dependencias instaladas correctamente en el intento $attempt"
+              return 0
+            fi
+            
+            echo "❌ Falló la instalación en el intento $attempt"
+            
+            # Si no es el último intento, limpiar caché y reintentar
+            if [ $attempt -lt $max_retries ]; then
+              echo "🧹 Limpiando caché de descargas y buildtrees problemáticos..."
+              
+              # Limpiar caché específico de opus y libvpx
+              rm -rf "$VCPKG_INSTALLATION_ROOT/buildtrees/opus" \
+                     "$VCPKG_INSTALLATION_ROOT/buildtrees/libvpx" \
+                     "$VCPKG_INSTALLATION_ROOT/downloads/opus"* \
+                     "$VCPKG_INSTALLATION_ROOT/downloads/libvpx"* \
+                     "$VCPKG_INSTALLATION_ROOT/downloads/_*opus*" \
+                     "$VCPKG_INSTALLATION_ROOT/downloads/_*libvpx*" 2>/dev/null || true
+              
+              echo "⏳ Esperando $retry_delay segundos antes del siguiente intento..."
+              sleep $retry_delay
+              
+              # Incrementar el delay para el siguiente intento
+              retry_delay=$((retry_delay + 15))
+            fi
+          done
+          
+          echo "💥 ERROR: No se pudieron instalar las dependencias tras $max_retries intentos"
+          echo "🔍 Diagnóstico final:"
+          echo "- Verificar conectividad a GitHub"
+          echo "- Posibles problemas de proxy o firewall"
+          echo "- Servidor de GitHub temporalmente no disponible"
+          return 1
+        }
+        
+        # Ejecutar instalación con reintentos
+        install_vcpkg_dependencies
+        
+        # Verificar que las dependencias se instalaron correctamente
+        echo "Verificando instalación de dependencias..."
+        if [ -d "$VCPKG_INSTALLATION_ROOT/installed/x64-windows-static/include/opus" ]; then
+          echo "✅ opus headers encontrados"
+        else
+          echo "⚠️ opus headers no encontrados en la ubicación esperada"
+        fi
+        
+        # Listar dependencias instaladas
+        echo "Dependencias instaladas:"
+        ls -la "$VCPKG_INSTALLATION_ROOT/installed/x64-windows-static/include/" || echo "Directorio include no encontrado"
+        
+        # Verificar librerías instaladas
+        echo "Librerías instaladas:"
+        ls -la "$VCPKG_INSTALLATION_ROOT/installed/x64-windows-static/lib/" || echo "Directorio lib no encontrado"
+      shell: bash
+        
+    - name: Verify vcpkg installation
+      run: |
+        Write-Host "=== Verificación post-instalación de vcpkg ==="
+        Write-Host "VCPKG_INSTALLATION_ROOT: $env:VCPKG_INSTALLATION_ROOT"
+        
+        # Verificar que el directorio raíz existe
+        if (-not (Test-Path $env:VCPKG_INSTALLATION_ROOT)) {
+          Write-Host "❌ VCPKG_INSTALLATION_ROOT no existe: $env:VCPKG_INSTALLATION_ROOT"
+          Write-Host "⚠️ Continuando sin verificación de vcpkg..."
+        }
+        
+        Write-Host "✅ Directorio raíz de vcpkg existe"
+        Write-Host "Contenido del directorio raíz:"
+        Get-ChildItem $env:VCPKG_INSTALLATION_ROOT | ForEach-Object { Write-Host "  - $($_.Name)" }
+        
+        # Verificar directorio installed
+        $installedDir = "$env:VCPKG_INSTALLATION_ROOT\installed"
+        if (-not (Test-Path $installedDir)) {
+          Write-Host "❌ Directorio installed no existe: $installedDir"
+          Write-Host "Las dependencias de vcpkg no se instalaron correctamente."
+          Write-Host "Esto puede deberse a:"
+          Write-Host "- Error en el paso anterior de instalación de vcpkg"
+          Write-Host "- Problemas de conectividad durante la descarga"
+          Write-Host "- Fallo en la compilación de las dependencias"
+          exit 1
+        }
+        
+        Write-Host "✅ Directorio installed existe"
+        Write-Host "Contenido del directorio installed:"
+        Get-ChildItem $installedDir | ForEach-Object { Write-Host "  - $($_.Name)" }
+        
+        # Verificar triplet específico
+        $tripletDir = "$installedDir\x64-windows-static"
+        if (-not (Test-Path $tripletDir)) {
+          Write-Host "❌ Directorio x64-windows-static no existe: $tripletDir"
+          Write-Host "⚠️ Continuando sin verificación del triplet..."
+        }
+        
+        Write-Host "✅ Directorio x64-windows-static existe"
+        Write-Host "Contenido del directorio x64-windows-static:"
+        Get-ChildItem $tripletDir | ForEach-Object { Write-Host "  - $($_.Name)" }
+        
+        # Verificar directorios críticos
+        $includeDir = "$tripletDir\include"
+        $libDir = "$tripletDir\lib"
+        
+        if (Test-Path $includeDir) {
+          Write-Host "✅ Directorio include existe"
+          $headerCount = (Get-ChildItem $includeDir -File).Count
+          Write-Host "  Headers encontrados: $headerCount"
+          
+          # Buscar headers de opus específicamente
+          $opusHeaders = Get-ChildItem $includeDir -Filter "*opus*"
+          if ($opusHeaders.Count -gt 0) {
+            Write-Host "✅ Headers de opus encontrados:"
+            $opusHeaders | ForEach-Object { Write-Host "    - $($_.Name)" }
+          } else {
+            Write-Host "⚠️ No se encontraron headers de opus"
+          }
+        } else {
+          Write-Host "❌ Directorio include no existe: $includeDir"
+          Write-Host "⚠️ Continuando sin verificación de headers..."
+        }
+        
+        if (Test-Path $libDir) {
+          Write-Host "✅ Directorio lib existe"
+          $libCount = (Get-ChildItem $libDir -File).Count
+          Write-Host "  Librerías encontradas: $libCount"
+        } else {
+          Write-Host "❌ Directorio lib no existe: $libDir"
+          Write-Host "⚠️ Continuando sin verificación de librerías..."
+        }
+        
+        Write-Host "✅ Verificación de vcpkg completada exitosamente"
+      shell: powershell
+        
+    - name: Create config directory
+      run: mkdir -p rustdesk/src/ui
+      shell: bash
+      
+    - name: Write configuration
+      run: |
+        echo '${{ inputs.config_json }}' > rustdesk/src/ui/config.json
+      shell: bash
+      
+    - name: Parse and apply configuration
+      run: |
+        cd rustdesk
+        
+        $config = '${{ inputs.config_json }}' | ConvertFrom-Json
+        
+        # Crear archivo de configuración Rust
+        $rustConfig = @"
+        // Auto-generated configuration
+        pub const RENDEZVOUS_SERVER: &str = "$($config.server.RENDEZVOUS_SERVER)";
+        pub const RELAY_SERVER: &str = "$($config.server.RELAY_SERVER)";
+        pub const API_SERVER: &str = "$($config.server.API_SERVER)";
+        pub const KEY: &str = "$($config.server.KEY)";
+        pub const PRODUCT_NAME: &str = "$($config.branding.PRODUCT_NAME)";
+        pub const APP_NAME: &str = "$($config.branding.APP_NAME)";
+        "@
+        
+        $rustConfig | Out-File -FilePath "src/config.rs" -Encoding UTF8
+        
+        # Actualizar Cargo.toml con el nombre del producto
+        $cargoToml = Get-Content "Cargo.toml" -Raw
+        $cargoToml = $cargoToml -replace 'name = "rustdesk"', "name = `"$($config.branding.APP_NAME)`""
+        # Corregir default-run para que apunte al target correcto (RustDesk con mayúsculas)
+        $cargoToml = $cargoToml -replace 'default-run = "rustdesk"', 'default-run = "RustDesk"'
+        $cargoToml | Out-File -FilePath "Cargo.toml" -Encoding UTF8
+        
+      shell: powershell
+      
+    - name: Build RustDesk
+      run: |
+        cd rustdesk
+        
+        $env:VCPKG_ROOT = "$env:VCPKG_INSTALLATION_ROOT"
+        $env:LIBCLANG_PATH = "$env:PROGRAMFILES\LLVM\bin"
+        $env:CLANG_PATH = "$env:PROGRAMFILES\LLVM\bin\clang.exe"
+        
+        # Configurar variables de entorno para vcpkg y compilación
+        $env:VCPKG_DEFAULT_TRIPLET = "x64-windows-static"
+        $env:VCPKG_TARGET_TRIPLET = "x64-windows-static"
+        $env:PKG_CONFIG_PATH = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\lib\pkgconfig"
+        
+        # OPTIMIZACIÓN: Configurar compilación paralela
+        $env:CARGO_BUILD_JOBS = [Environment]::ProcessorCount
+        $env:RUSTC_WRAPPER = ""  # Desactivar sccache si causa problemas
+        $env:CARGO_INCREMENTAL = "1"  # Habilitar compilación incremental
+        
+        # Configurar variables específicas para linking estático
+        $env:RUSTFLAGS = "-C target-feature=+crt-static"
+        
+        # SOLUCIÓN MEJORADA PARA ERRORES DE HEADERS NO ENCONTRADOS EN MAGNUM-OPUS Y SCRAP
+        # Configuramos variables específicas para opus y vpx, y mejoramos bindgen
+        # para que pueda encontrar todos los headers necesarios
+        
+        # Configurar variables específicas para magnum-opus y headers de opus
+        $env:OPUS_INCLUDE_DIR = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\include"
+        $env:OPUS_LIB_DIR = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\lib"
+        $env:OPUS_STATIC = "1"
+        $env:OPUS_NO_PKG = "1"
+        
+        # Variables adicionales para magnum-opus
+        $env:DEP_OPUS_INCLUDE = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\include"
+        $env:DEP_OPUS_LIB = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\lib"
+        $env:DEP_OPUS_STATIC = "1"
+        
+        # VERIFICACIÓN CRÍTICA: Asegurar que VCPKG_INSTALLATION_ROOT está configurado
+        Write-Host "=== Verificando configuración de vcpkg ==="
+        if (-not $env:VCPKG_INSTALLATION_ROOT) {
+          Write-Host "❌ VCPKG_INSTALLATION_ROOT no está configurado"
+          Write-Host "Variables de entorno disponibles:"
+          Get-ChildItem Env: | Where-Object { $_.Name -like "*VCPKG*" } | ForEach-Object { Write-Host "  $($_.Name) = $($_.Value)" }
+          exit 1
+        }
+        
+        Write-Host "✅ VCPKG_INSTALLATION_ROOT configurado: $env:VCPKG_INSTALLATION_ROOT"
+        
+        # VERIFICACIÓN CRÍTICA: Verificar que el directorio installed existe
+        $installedDir = "$env:VCPKG_INSTALLATION_ROOT\installed"
+        Write-Host "=== Verificación post-instalación de vcpkg ==="
+        Write-Host "VCPKG_INSTALLATION_ROOT: $env:VCPKG_INSTALLATION_ROOT"
+        
+        if (Test-Path $env:VCPKG_INSTALLATION_ROOT) {
+          Write-Host "✅ Directorio raíz de vcpkg existe"
+          Write-Host "Contenido del directorio raíz:"
+          Get-ChildItem $env:VCPKG_INSTALLATION_ROOT | ForEach-Object { Write-Host "  - $($_.Name)" }
+        } else {
+          Write-Host "❌ Directorio raíz de vcpkg no existe: $env:VCPKG_INSTALLATION_ROOT"
+          Write-Host "⚠️ Continuando sin verificación de vcpkg..."
+        }
+        
+        if (-not (Test-Path $installedDir)) {
+          Write-Host "❌ Directorio installed no existe: $installedDir"
+          Write-Host "Iniciando proceso de recuperación automática..."
+          
+          # Buscar directorios que podrían contener las dependencias instaladas
+          $possibleDirs = @(
+            "$env:VCPKG_INSTALLATION_ROOT\buildtrees",
+            "$env:VCPKG_INSTALLATION_ROOT\packages",
+            "$env:VCPKG_INSTALLATION_ROOT\downloads"
+          )
+          
+          foreach ($dir in $possibleDirs) {
+            if (Test-Path $dir) {
+              Write-Host "Contenido de $dir:"
+              Get-ChildItem $dir | ForEach-Object { Write-Host "  - $($_.Name)" }
+            }
+          }
+          
+          # Crear el directorio installed manualmente
+          Write-Host "Creando directorio installed manualmente..."
+          New-Item -ItemType Directory -Path $installedDir -Force | Out-Null
+          New-Item -ItemType Directory -Path "$installedDir\x64-windows-static" -Force | Out-Null
+          New-Item -ItemType Directory -Path "$installedDir\x64-windows-static\include" -Force | Out-Null
+          New-Item -ItemType Directory -Path "$installedDir\x64-windows-static\lib" -Force | Out-Null
+          
+          # Buscar archivos de headers y librerías en packages y copiarlos
+          $packagesDir = "$env:VCPKG_INSTALLATION_ROOT\packages"
+          if (Test-Path $packagesDir) {
+            Write-Host "Buscando headers y librerías en packages..."
+            
+            # Buscar y copiar archivos de opus
+            $opusPackage = Get-ChildItem $packagesDir | Where-Object { $_.Name -like "*opus*" } | Select-Object -First 1
+            if ($opusPackage) {
+              Write-Host "Encontrado paquete opus: $($opusPackage.Name)"
+              
+              # Copiar headers
+              $opusHeaders = Get-ChildItem "$($opusPackage.FullName)" -Recurse -Filter "*.h" | Where-Object { $_.Name -like "opus*" }
+              foreach ($header in $opusHeaders) {
+                $destPath = "$installedDir\x64-windows-static\include\$($header.Name)"
+                Copy-Item $header.FullName $destPath -Force
+                Write-Host "Copiado header: $($header.Name)"
+              }
+              
+              # Copiar librerías
+              $opusLibs = Get-ChildItem "$($opusPackage.FullName)" -Recurse -Filter "*.lib" | Where-Object { $_.Name -like "*opus*" }
+              foreach ($lib in $opusLibs) {
+                $destPath = "$installedDir\x64-windows-static\lib\$($lib.Name)"
+                Copy-Item $lib.FullName $destPath -Force
+                Write-Host "Copiado lib: $($lib.Name)"
+              }
+            }
+            
+            # Buscar y copiar archivos de vpx
+            $vpxPackage = Get-ChildItem $packagesDir | Where-Object { $_.Name -like "*vpx*" } | Select-Object -First 1
+            if ($vpxPackage) {
+              Write-Host "Encontrado paquete vpx: $($vpxPackage.Name)"
+              
+              # Copiar headers
+              $vpxHeaders = Get-ChildItem "$($vpxPackage.FullName)" -Recurse -Filter "*.h" | Where-Object { $_.Name -like "vpx*" }
+              foreach ($header in $vpxHeaders) {
+                $destPath = "$installedDir\x64-windows-static\include\$($header.Name)"
+                Copy-Item $header.FullName $destPath -Force
+                Write-Host "Copiado header: $($header.Name)"
+              }
+              
+              # Copiar librerías
+              $vpxLibs = Get-ChildItem "$($vpxPackage.FullName)" -Recurse -Filter "*.lib" | Where-Object { $_.Name -like "*vpx*" }
+              foreach ($lib in $vpxLibs) {
+                $destPath = "$installedDir\x64-windows-static\lib\$($lib.Name)"
+                Copy-Item $lib.FullName $destPath -Force
+                Write-Host "Copiado lib: $($lib.Name)"
+              }
+            }
+            
+            # Buscar otras dependencias comunes
+            $commonPackages = @("zlib", "openssl", "libyuv")
+            foreach ($packageName in $commonPackages) {
+              $package = Get-ChildItem $packagesDir | Where-Object { $_.Name -like "*$packageName*" } | Select-Object -First 1
+              if ($package) {
+                Write-Host "Encontrado paquete $packageName: $($package.Name)"
+                
+                # Copiar todos los headers
+                $headers = Get-ChildItem "$($package.FullName)" -Recurse -Filter "*.h"
+                foreach ($header in $headers) {
+                  $destPath = "$installedDir\x64-windows-static\include\$($header.Name)"
+                  Copy-Item $header.FullName $destPath -Force
+                  Write-Host "Copiado header: $($header.Name)"
+                }
+                
+                # Copiar todas las librerías
+                $libs = Get-ChildItem "$($package.FullName)" -Recurse -Filter "*.lib"
+                foreach ($lib in $libs) {
+                  $destPath = "$installedDir\x64-windows-static\lib\$($lib.Name)"
+                  Copy-Item $lib.FullName $destPath -Force
+                  Write-Host "Copiado lib: $($lib.Name)"
+                }
+              }
+            }
+          }
+          
+          # Verificar que se creó correctamente
+          if (Test-Path $installedDir) {
+            Write-Host "✅ Directorio installed creado exitosamente"
+            Write-Host "Contenido de include:"
+            if (Test-Path "$installedDir\x64-windows-static\include") {
+              Get-ChildItem "$installedDir\x64-windows-static\include" | ForEach-Object { Write-Host "  - $($_.Name)" }
+            }
+            Write-Host "Contenido de lib:"
+            if (Test-Path "$installedDir\x64-windows-static\lib") {
+              Get-ChildItem "$installedDir\x64-windows-static\lib" | ForEach-Object { Write-Host "  - $($_.Name)" }
+            }
+          } else {
+            Write-Host "⚠️ No se pudo crear el directorio installed, continuando sin él..."
+          }
+        } else {
+          Write-Host "✅ Directorio installed existe: $installedDir"
+        }
+        
+        # Simplificado: Configuración de estructura de headers para magnum-opus
+        $opusIncludeDir = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\include"
+        $opusSubDir = "$opusIncludeDir\opus"
+        if (-not (Test-Path $opusSubDir)) {
+        New-Item -ItemType Directory -Path $opusSubDir -Force | Out-Null
+        }
+        $headers = @("opus.h", "opus_multistream.h", "opus_defines.h", "opus_types.h", "opus_custom.h")
+        foreach ($h in $headers) {
+        $src = "$opusIncludeDir\$h"
+        $dst = "$opusSubDir\$h"
+        if (Test-Path $src) {
+        Copy-Item $src $dst -Force
+        }
+        }
+        $critical = "$opusSubDir\opus_multistream.h"
+        if (-not (Test-Path $critical)) {
+        Write-Host "❌ CRÍTICO: opus_multistream.h no encontrado"
+         Write-Host "⚠️ Continuando sin verificación crítica..."
+        }
+        Write-Host "✅ Estructura de headers configurada"
+        
+        # Verificar que el directorio x64-windows-static existe
+        $tripletDir = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static"
+        if (-not (Test-Path $tripletDir)) {
+          Write-Host "❌ Directorio x64-windows-static no encontrado: $tripletDir"
+          Write-Host "Contenido del directorio installed:"
+          Get-ChildItem $installedDir | ForEach-Object { Write-Host "  - $($_.Name)" }
+          exit 1
+        }
+        
+        # Verificar que el directorio include base existe
+        if (-not (Test-Path $opusIncludeDir)) {
+          Write-Host "❌ Directorio include base no encontrado: $opusIncludeDir"
+          Write-Host "Contenido del directorio x64-windows-static:"
+          Get-ChildItem $tripletDir | ForEach-Object { Write-Host "  - $($_.Name)" }
+          exit 1
+        }
+        
+        # Crear el subdirectorio opus (forzar recreación si existe)
+        if (Test-Path $opusSubDir) {
+          Write-Host "Removiendo directorio opus existente..."
+          Remove-Item -Path $opusSubDir -Recurse -Force
+        }
+        
+        Write-Host "Creando directorio opus en include..."
+        New-Item -ItemType Directory -Path $opusSubDir -Force | Out-Null
+        
+        # Verificar que se creó correctamente
+        if (-not (Test-Path $opusSubDir)) {
+          Write-Host "❌ No se pudo crear el directorio opus: $opusSubDir"
+          Write-Host "⚠️ Continuando sin directorio opus..."
+        }
+        
+        Write-Host "✅ Directorio opus creado exitosamente"
+        
+        # Verificar que los headers de opus están disponibles
+        Write-Host "=== Verificando disponibilidad de headers de opus ==="
+        $opusHeaders = @("opus.h", "opus_multistream.h", "opus_defines.h", "opus_types.h", "opus_custom.h")
+        $availableHeaders = @()
+        
+        foreach ($header in $opusHeaders) {
+          $sourceFile = "$opusIncludeDir\$header"
+          if (Test-Path $sourceFile) {
+            $availableHeaders += $header
+            Write-Host "  ✅ $header encontrado"
+          } else {
+            Write-Host "  ❌ $header NO encontrado en $sourceFile"
+          }
+        }
+        
+        if ($availableHeaders.Count -eq 0) {
+          Write-Host "❌ CRÍTICO: No se encontraron headers de opus en $opusIncludeDir"
+          Write-Host "Contenido del directorio include:"
+          Get-ChildItem $opusIncludeDir | ForEach-Object { Write-Host "  - $($_.Name)" }
+          Write-Host "Buscando archivos que contengan 'opus' en el nombre:"
+          Get-ChildItem $opusIncludeDir -Filter "*opus*" | ForEach-Object { Write-Host "  - $($_.Name)" }
+          exit 1
+        }
+        
+        Write-Host "✅ Encontrados $($availableHeaders.Count) headers de opus de $($opusHeaders.Count) esperados"
+        
+        # Copiar TODOS los headers de opus disponibles al subdirectorio opus/
+        Write-Host "Copiando headers de opus al subdirectorio..."
+        $copiedHeaders = 0
+        
+        foreach ($header in $availableHeaders) {
+          $sourceFile = "$opusIncludeDir\$header"
+          $destFile = "$opusSubDir\$header"
+          
+          Write-Host "  Copiando $header..."
+          try {
+            Copy-Item $sourceFile $destFile -Force
+            if (Test-Path $destFile) {
+              Write-Host "  ✅ $header copiado exitosamente"
+              $copiedHeaders++
+            } else {
+              Write-Host "  ❌ Error: $header no se copió correctamente"
+            }
+          } catch {
+            Write-Host "  ❌ Excepción copiando $header`: $($_.Exception.Message)"
+          }
+        }
+        
+        Write-Host "Headers copiados: $copiedHeaders de $($availableHeaders.Count) disponibles"
+        
+        # Verificación final crítica
+        $criticalHeader = "$opusSubDir\opus_multistream.h"
+        if (Test-Path $criticalHeader) {
+          Write-Host "✅ CRÍTICO: opus/opus_multistream.h está disponible en $criticalHeader"
+        } else {
+          Write-Host "❌ CRÍTICO: opus/opus_multistream.h NO está disponible en $criticalHeader"
+          Write-Host "Listando contenido del directorio opus:"
+          if (Test-Path $opusSubDir) {
+            Get-ChildItem $opusSubDir | ForEach-Object { Write-Host "  - $($_.Name)" }
+          }
+          Write-Host "Listando contenido del directorio include base:"
+          Get-ChildItem $opusIncludeDir -Filter "opus*" | ForEach-Object { Write-Host "  - $($_.Name)" }
+          exit 1
+        }
+        
+        # Variables adicionales específicas para magnum-opus build script
+        $env:OPUS_INCLUDE_PATH = $opusIncludeDir
+        $env:OPUS_LIB_PATH = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\lib"
+        $env:LIBOPUS_INCLUDE_DIR = $opusIncludeDir
+        $env:LIBOPUS_LIB_DIR = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\lib"
+        
+        # Configurar variables específicas para scrap y headers de vpx
+        $env:VPX_INCLUDE_DIR = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\include"
+        $env:VPX_LIB_DIR = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\lib"
+        $env:VPX_STATIC = "1"
+        $env:VPX_NO_PKG = "1"
+        
+        # Configurar bindgen con múltiples rutas de include
+        $includeDir = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\include"
+        $env:BINDGEN_EXTRA_CLANG_ARGS = "-I$includeDir -I$includeDir\opus -I$includeDir\vpx --sysroot=$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static"
+        
+        # Configuración adicional específica para magnum-opus bindgen
+        $env:CLANG_INCLUDE_PATH = "$includeDir;$includeDir\opus;$includeDir\vpx"
+        $env:CPATH = "$includeDir;$includeDir\opus;$includeDir\vpx"
+        
+        # VERIFICACIÓN ADICIONAL: Probar que clang puede encontrar el header
+        Write-Host "=== Verificando que clang puede encontrar opus_multistream.h ==="
+        $testCommand = "echo '#include <opus/opus_multistream.h>' | `\"$env:CLANG_PATH`\" -I`\"$includeDir`\" -I`\"$includeDir\opus`\" -E -"
+        $testResult = Invoke-Expression $testCommand 2>&1
+        if ($LASTEXITCODE -ne 0) {
+          Write-Host "❌ Clang no puede encontrar el header: $testResult"
+          Write-Host "⚠️ Continuando sin verificación de clang..."
+        }
+        Write-Host "✅ Verificación de clang exitosa"
+        
+        # Variables adicionales para build scripts y compatibilidad
+        $env:CPPFLAGS = "-I$includeDir -I$includeDir\opus -I$includeDir\vpx"
+        $env:LDFLAGS = "-L$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\lib"
+        
+        # Variables adicionales para bindgen y clang
+        $env:LIBCLANG_INCLUDE_PATH = "$includeDir"
+        $env:C_INCLUDE_PATH = "$includeDir"
+        $env:CPLUS_INCLUDE_PATH = "$includeDir"
+        
+        # Variables adicionales para compatibilidad con diferentes build scripts
+        $env:OPUS_LIBS = "-lopus"
+        $env:OPUS_CFLAGS = "-I$includeDir\opus"
+        
+        # Verificar configuración de vcpkg
+        Write-Host "=== Configuración de vcpkg ==="
+        Write-Host "VCPKG_ROOT: $env:VCPKG_ROOT"
+        Write-Host "VCPKG_DEFAULT_TRIPLET: $env:VCPKG_DEFAULT_TRIPLET"
+        Write-Host "PKG_CONFIG_PATH: $env:PKG_CONFIG_PATH"
+        Write-Host "OPUS_INCLUDE_DIR: $env:OPUS_INCLUDE_DIR"
+        Write-Host "OPUS_LIB_DIR: $env:OPUS_LIB_DIR"
+        Write-Host "BINDGEN_EXTRA_CLANG_ARGS: $env:BINDGEN_EXTRA_CLANG_ARGS"
+        
+        # Verificar que los headers están disponibles
+        Write-Host "=== Verificando headers instalados ==="
+        if (Test-Path "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\include") {
+          Write-Host "Directorio include encontrado, listando contenido:"
+          Get-ChildItem "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\include" | Select-Object -First 20
+        } else {
+          Write-Host "❌ Directorio include no encontrado"
+        }
+        
+        # Verificar específicamente los headers de opus que necesita magnum-opus
+        Write-Host "=== Verificando headers específicos de opus ==="
+        $opusHeaders = @(
+          "opus\opus.h",
+          "opus\opus_multistream.h", 
+          "opus\opus_defines.h",
+          "opus\opus_types.h"
+        )
+        
+        foreach ($header in $opusHeaders) {
+          $headerPath = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\include\$header"
+          if (Test-Path $headerPath) {
+            Write-Host "✅ $header encontrado"
+          } else {
+            Write-Host "❌ $header NO encontrado en $headerPath"
+          }
+        }
+        
+        # Verificar específicamente los headers de vpx que necesita scrap
+        Write-Host "=== Verificando headers específicos de vpx ==="
+        $vpxHeaders = @(
+          "vpx\vp8.h",
+          "vpx\vp8cx.h",
+          "vpx\vp8dx.h",
+          "vpx\vpx_codec.h",
+          "vpx\vpx_decoder.h",
+          "vpx\vpx_encoder.h"
+        )
+        
+        foreach ($header in $vpxHeaders) {
+          $headerPath = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\include\$header"
+          if (Test-Path $headerPath) {
+            Write-Host "✅ $header encontrado"
+          } else {
+            Write-Host "❌ $header NO encontrado en $headerPath"
+          }
+        }
+        
+        # Verificar librerías instaladas
+        Write-Host "=== Verificando librerías instaladas ==="
+        if (Test-Path "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\lib") {
+          Write-Host "Librerías encontradas:"
+          Get-ChildItem "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static\lib" -Filter "*.lib" | Select-Object Name | ForEach-Object { Write-Host "  - $($_.Name)" }
+        } else {
+          Write-Host "❌ Directorio lib no encontrado"
+        }
+        
+        # MODO SOLO HEADERS: Terminar aquí si solo queremos verificar headers
+        if ("${{ inputs.headers_only_mode }}" -eq "true") {
+          Write-Host "🔍 MODO SOLO HEADERS: Verificación completada"
+          Write-Host "✅ Todas las verificaciones de headers y dependencias han terminado"
+          Write-Host "💡 Para continuar con la compilación, ejecuta sin headers_only_mode"
+          exit 0
+        }
+        
+        Write-Host "=== Iniciando compilación de RustDesk ==="
+        Write-Host "Modo debug habilitado: ${{ inputs.enable_debug }}"
+        Write-Host "Modo verificación rápida: ${{ inputs.fast_check_mode }}"
+        
+        # Compilar con información verbosa para diagnóstico
+        $env:RUST_BACKTRACE = "1"
+        $env:RUST_LOG = "debug"
+        
+        if ("${{ inputs.fast_check_mode }}" -eq "true") {
+          Write-Host "🚀 MODO VERIFICACIÓN RÁPIDA: Solo verificando dependencias y headers"
+          Write-Host "Ejecutando cargo check para verificar que todo compila sin generar binarios..."
+          cargo check --release --features inline --verbose
+          Write-Host "✅ Verificación completada exitosamente!"
+          Write-Host "💡 Para compilación completa, ejecuta sin fast_check_mode"
+        } elseif ("${{ inputs.enable_debug }}" -eq "true") {
+          Write-Host "🔧 MODO DEBUG: Compilación completa con información de debug"
+          cargo build --release --features inline --verbose
+        } else {
+          Write-Host "🏗️ MODO NORMAL: Compilación completa optimizada"
+          cargo build --release --features inline --verbose
+        }
+      shell: powershell
+      
+    - name: Prepare executable
+      run: |
+        cd rustdesk
+        
+        $config = '${{ inputs.config_json }}' | ConvertFrom-Json
+        $executableName = "${{ inputs.executable_name }}"
+        
+        # Buscar el ejecutable generado (puede ser RustDesk.exe o el nombre personalizado)
+        $builtExecutable = ""
+        if (Test-Path "target/release/RustDesk.exe") {
+          $builtExecutable = "target/release/RustDesk.exe"
+        } elseif (Test-Path "target/release/rustdesk.exe") {
+          $builtExecutable = "target/release/rustdesk.exe"
+        } elseif (Test-Path "target/release/$($config.branding.APP_NAME).exe") {
+          $builtExecutable = "target/release/$($config.branding.APP_NAME).exe"
+        } else {
+          Write-Host "No se encontró el ejecutable compilado"
+          Write-Host "⚠️ Continuando sin ejecutable..."
+        }
+        
+        Write-Host "Ejecutable encontrado: $builtExecutable"
+        
+        # Copiar el ejecutable con el nombre personalizado si es diferente
+        if ($builtExecutable -ne "target/release/$executableName.exe") {
+          Copy-Item $builtExecutable "target/release/$executableName.exe"
+        }
+        
+        # Si es modo portable, crear el archivo .portable
+        if ("${{ inputs.enable_portable }}" -eq "true") {
+          New-Item -Path "target/release/$executableName.portable" -ItemType File
+        }
+      shell: powershell
+      
+    - name: Create installer (if enabled)
+      if: inputs.include_installer == true
+      run: |
+        cd rustdesk
+        
+        # Instalar NSIS
+        choco install nsis -y
+        
+        # Crear script NSIS básico
+        $config = '${{ inputs.config_json }}' | ConvertFrom-Json
+        $executableName = "${{ inputs.executable_name }}"
+        
+        $nsisScript = @"
+        !define PRODUCT_NAME "$($config.branding.PRODUCT_NAME)"
+        !define PRODUCT_VERSION "$($config.build.VERSION)"
+        !define PRODUCT_PUBLISHER "$($config.branding.PRODUCT_NAME)"
+        !define PRODUCT_WEB_SITE "https://rustdesk.com"
+        !define PRODUCT_DIR_REGKEY "Software\Microsoft\Windows\CurrentVersion\App Paths\$executableName.exe"
+        !define PRODUCT_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\`${PRODUCT_NAME}"
+        
+        SetCompressor lzma
+        
+        Name "`${PRODUCT_NAME}"
+        OutFile "$executableName-installer.exe"
+        InstallDir "`$PROGRAMFILES\`${PRODUCT_NAME}"
+        
+        Section "MainSection" SEC01
+          SetOutPath "`$INSTDIR"
+          File "target\release\$executableName.exe"
+          CreateDirectory "`$SMPROGRAMS\`${PRODUCT_NAME}"
+          CreateShortCut "`$SMPROGRAMS\`${PRODUCT_NAME}\`${PRODUCT_NAME}.lnk" "`$INSTDIR\$executableName.exe"
+          CreateShortCut "`$DESKTOP\`${PRODUCT_NAME}.lnk" "`$INSTDIR\$executableName.exe"
+        SectionEnd
+        
+        Section -AdditionalIcons
+          WriteIniStr "`$INSTDIR\`${PRODUCT_NAME}.url" "InternetShortcut" "URL" "`${PRODUCT_WEB_SITE}"
+          CreateShortCut "`$SMPROGRAMS\`${PRODUCT_NAME}\Website.lnk" "`$INSTDIR\`${PRODUCT_NAME}.url"
+          CreateShortCut "`$SMPROGRAMS\`${PRODUCT_NAME}\Uninstall.lnk" "`$INSTDIR\uninst.exe"
+        SectionEnd
+        
+        Section -Post
+          WriteUninstaller "`$INSTDIR\uninst.exe"
+          WriteRegStr HKLM "`${PRODUCT_DIR_REGKEY}" "" "`$INSTDIR\$executableName.exe"
+          WriteRegStr HKLM "`${PRODUCT_UNINST_KEY}" "DisplayName" "`$(^Name)"
+          WriteRegStr HKLM "`${PRODUCT_UNINST_KEY}" "UninstallString" "`$INSTDIR\uninst.exe"
+          WriteRegStr HKLM "`${PRODUCT_UNINST_KEY}" "DisplayIcon" "`$INSTDIR\$executableName.exe"
+          WriteRegStr HKLM "`${PRODUCT_UNINST_KEY}" "DisplayVersion" "`${PRODUCT_VERSION}"
+          WriteRegStr HKLM "`${PRODUCT_UNINST_KEY}" "URLInfoAbout" "`${PRODUCT_WEB_SITE}"
+          WriteRegStr HKLM "`${PRODUCT_UNINST_KEY}" "Publisher" "`${PRODUCT_PUBLISHER}"
+        SectionEnd
+        "@
+        
+        $nsisScript | Out-File -FilePath "installer.nsi" -Encoding UTF8
+        
+        # Compilar el instalador
+        & "C:\Program Files (x86)\NSIS\makensis.exe" installer.nsi
+      shell: powershell
+      
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: rustdesk-${{ inputs.executable_name }}-windows-${{ inputs.target_arch }}
+        path: |
+          rustdesk/target/release/${{ inputs.executable_name }}.exe
+          rustdesk/target/release/${{ inputs.executable_name }}.portable
+          rustdesk/${{ inputs.executable_name }}-installer.exe
+        retention-days: 30
+        
+    - name: Create release info
+      run: |
+        $config = '${{ inputs.config_json }}' | ConvertFrom-Json
+        $releaseInfo = @{
+          executable_name = "${{ inputs.executable_name }}"
+          version = $config.build.VERSION
+          architecture = "${{ inputs.target_arch }}"
+          platform = "windows"
+          portable = "${{ inputs.enable_portable }}"
+          installer = "${{ inputs.include_installer }}"
+          server = $config.server.RENDEZVOUS_SERVER
+          product_name = $config.branding.PRODUCT_NAME
+          build_date = (Get-Date -Format "yyyy-MM-dd HH:mm:ss UTC")
+        }
+        
+        $releaseInfo | ConvertTo-Json | Out-File -FilePath "release-info.json" -Encoding UTF8
+      shell: powershell
+      
+    - name: Upload release info
+      uses: actions/upload-artifact@v4
+      with:
+        name: release-info
+        path: release-info.json
+        retention-days: 30

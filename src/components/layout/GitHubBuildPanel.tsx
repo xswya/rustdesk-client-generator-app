@@ -110,12 +110,11 @@ export const GitHubBuildPanel: React.FC<GitHubBuildPanelProps> = ({ config, onCl
         target_arch: config.build?.TARGET_ARCH || 'x86_64',
         enable_portable: config.build?.ENABLE_PORTABLE_MODE || true,
         include_installer: config.build?.INCLUDE_INSTALLER || true,
-        enable_debug: config.build?.ENABLE_DEBUG_MODE || false,
-        sign_executable: config.build?.SIGN_EXECUTABLE || false
+        enable_debug: config.build?.ENABLE_DEBUG_MODE || false
       };
 
       // Ejecutar el workflow
-      const workflowResponse = await fetch(`https://api.github.com/repos/${githubConfig.owner}/${githubConfig.repo}/actions/workflows/build-rustdesk-final.yml/dispatches`, {
+      const workflowResponse = await fetch(`https://api.github.com/repos/${githubConfig.owner}/${githubConfig.repo}/actions/workflows/build-rustdesk.yml/dispatches`, {
         method: 'POST',
         headers: {
           'Authorization': `token ${githubConfig.token}`,
@@ -141,14 +140,14 @@ export const GitHubBuildPanel: React.FC<GitHubBuildPanelProps> = ({ config, onCl
       setBuildStatus({
         status: 'building',
         message: 'Workflow iniciado exitosamente. Compilando cliente RustDesk...',
-        workflowUrl: `https://github.com/${githubConfig.owner}/${githubConfig.repo}/actions/workflows/build-rustdesk-final.yml`
+        workflowUrl: `https://github.com/${githubConfig.owner}/${githubConfig.repo}/actions/workflows/build-rustdesk.yml`
       });
 
       // Monitorear el progreso del workflow
       const monitorWorkflow = async () => {
         try {
           // Obtener las ejecuciones del workflow
-          const runsResponse = await fetch(`https://api.github.com/repos/${githubConfig.owner}/${githubConfig.repo}/actions/workflows/build-rustdesk-final.yml/runs?per_page=1`, {
+          const runsResponse = await fetch(`https://api.github.com/repos/${githubConfig.owner}/${githubConfig.repo}/actions/workflows/build-rustdesk.yml/runs?per_page=1`, {
             headers: {
               'Authorization': `token ${githubConfig.token}`,
               'Accept': 'application/vnd.github.v3+json'
