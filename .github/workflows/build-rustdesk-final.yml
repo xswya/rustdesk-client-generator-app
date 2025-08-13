@@ -1,4 +1,4 @@
-name: Build RustDesk Client (Final)
+name: Build RustDesk Client (Final v2)
 
 on:
   workflow_dispatch:
