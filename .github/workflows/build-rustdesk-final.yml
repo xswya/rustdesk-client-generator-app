@@ -97,7 +97,7 @@ jobs:
       run: |
         Write-Host "=== Installing system dependencies ==="
         choco install nsis -y --no-progress
-        Write-Host "✅ System dependencies installed"
+        Write-Host "[SUCCESS] System dependencies installed"
         
     - name: Setup vcpkg environment
       shell: powershell
@@ -110,12 +110,12 @@ jobs:
         $dest = "$env:GITHUB_WORKSPACE\rustdesk\vcpkg.json"
         
         if (-not (Test-Path $source)) {
-          Write-Host "❌ Source vcpkg.json not found: $source"
+          Write-Host "[ERROR] Source vcpkg.json not found: $source"
           exit 1
         }
         
         Copy-Item $source $dest -Force
-        Write-Host "✅ vcpkg.json copied successfully"
+        Write-Host "[SUCCESS] vcpkg.json copied successfully"
         
     - name: Install vcpkg dependencies
       shell: powershell
@@ -131,7 +131,7 @@ jobs:
         & "$env:VCPKG_ROOT\vcpkg.exe" install --triplet x64-windows-static --x-install-root="$env:VCPKG_ROOT\installed"
         
         if ($LASTEXITCODE -ne 0) {
-          Write-Host "❌ vcpkg install failed with exit code: $LASTEXITCODE"
+          Write-Host "[ERROR] vcpkg install failed with exit code: $LASTEXITCODE"
           Write-Host "=== Checking for error logs ==="
           Get-ChildItem "$env:VCPKG_ROOT" -Filter "*.log" -Recurse | ForEach-Object {
             Write-Host "=== $($_.FullName) ==="
@@ -141,7 +141,7 @@ jobs:
           exit 1
         }
         
-        Write-Host "✅ vcpkg dependencies installed successfully"
+        Write-Host "[SUCCESS] vcpkg dependencies installed successfully"
         
     - name: Apply configuration
       shell: powershell
@@ -160,7 +160,7 @@ jobs:
         try {
           $config = '${{ inputs.config_json }}' | ConvertFrom-Json
         } catch {
-          Write-Host "❌ Failed to parse configuration JSON: $($_.Exception.Message)"
+          Write-Host "[ERROR] Failed to parse configuration JSON: $($_.Exception.Message)"
           exit 1
         }
         
@@ -175,7 +175,7 @@ jobs:
         $rustConfigLines += "pub const APP_NAME: &str = `"$($config.branding.APP_NAME)`";"
         
         $rustConfigLines | Out-File -FilePath "src\config.rs" -Encoding UTF8
-        Write-Host "✅ Rust config created"
+        Write-Host "[SUCCESS] Rust config created"
         
         # Update Cargo.toml carefully - only update if different from rustdesk
         if (Test-Path "Cargo.toml") {
@@ -183,13 +183,13 @@ jobs:
           
           if ($config.branding.APP_NAME -ne "rustdesk") {
             $cargoContent = $cargoContent -replace 'name = "rustdesk"', "name = `"$($config.branding.APP_NAME)`""
-            Write-Host "✅ Updated package name in Cargo.toml"
+            Write-Host "[SUCCESS] Updated package name in Cargo.toml"
           }
           
           $cargoContent | Out-File -FilePath "Cargo.toml" -Encoding UTF8
         }
         
-        Write-Host "✅ Configuration applied successfully"
+        Write-Host "[SUCCESS] Configuration applied successfully"
         
     - name: Build RustDesk
       shell: powershell
@@ -206,22 +206,26 @@ jobs:
         $env:RUST_BACKTRACE = "1"
         
         Write-Host "Starting Cargo build..."
-        Write-Host "Build mode: $('${{ inputs.enable_debug }}' -eq 'true' ? 'Debug' : 'Release')"
+        if ("${{ inputs.enable_debug }}" -eq "true") {
+          Write-Host "Build mode: Debug"
+        } else {
+          Write-Host "Build mode: Release"
+        }
         
         if ("${{ inputs.enable_debug }}" -eq "true") {
-          Write-Host "🔧 Building in debug mode..."
+          Write-Host "[DEBUG] Building in debug mode..."
           cargo build --features inline --verbose
         } else {
-          Write-Host "🏗️ Building in release mode..."
+          Write-Host "[RELEASE] Building in release mode..."
           cargo build --release --features inline --verbose
         }
         
         if ($LASTEXITCODE -ne 0) {
-          Write-Host "❌ Build failed with exit code $LASTEXITCODE"
+          Write-Host "[ERROR] Build failed with exit code $LASTEXITCODE"
           exit $LASTEXITCODE
         }
         
-        Write-Host "✅ Build completed successfully!"
+        Write-Host "[SUCCESS] Build completed successfully!"
         
     - name: Prepare artifacts
       shell: powershell
@@ -233,7 +237,7 @@ jobs:
         try {
           $config = '${{ inputs.config_json }}' | ConvertFrom-Json
         } catch {
-          Write-Host "❌ Failed to parse config JSON"
+          Write-Host "[ERROR] Failed to parse config JSON"
           exit 1
         }
         
@@ -253,13 +257,13 @@ jobs:
         foreach ($exe in $possibleExes) {
           if (Test-Path $exe) {
             $builtExecutable = $exe
-            Write-Host "✅ Found executable: $exe"
+            Write-Host "[SUCCESS] Found executable: $exe"
             break
           }
         }
         
         if (-not $builtExecutable) {
-          Write-Host "❌ No executable found. Available files in $buildDir:"
+          Write-Host "[ERROR] No executable found. Available files in $buildDir:"
           Get-ChildItem $buildDir -Filter "*.exe" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "  $($_.Name)" }
           exit 1
         }
@@ -268,7 +272,7 @@ jobs:
         $finalExe = "$buildDir\$executableName.exe"
         if ($builtExecutable -ne $finalExe) {
           Copy-Item $builtExecutable $finalExe -Force
-          Write-Host "✅ Copied executable to: $finalExe"
+          Write-Host "[SUCCESS] Copied executable to: $finalExe"
         }
         
         # Create installer if requested (use include_installer if provided, otherwise fallback to create_installer)
@@ -305,13 +309,13 @@ jobs:
           & "C:\Program Files (x86)\NSIS\makensis.exe" "installer.nsi"
           
           if ($LASTEXITCODE -eq 0) {
-            Write-Host "✅ Installer created successfully"
+            Write-Host "[SUCCESS] Installer created successfully"
           } else {
             Write-Host "⚠️ Installer creation failed, but continuing..."
           }
         }
         
-        Write-Host "✅ Artifacts prepared successfully"
+        Write-Host "[SUCCESS] Artifacts prepared successfully"
         
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
