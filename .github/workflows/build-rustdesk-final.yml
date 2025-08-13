@@ -115,24 +115,30 @@ jobs:
         Write-Host "✅ vcpkg.json copied successfully"
         
     - name: Install vcpkg dependencies
-      env:
-        VCPKG_DEFAULT_HOST_TRIPLET: x64-windows-static
-      shell: bash
+      shell: powershell
       run: |
-        cd rustdesk
-        if ! $VCPKG_ROOT/vcpkg \
-          install \
-          --triplet x64-windows-static \
-          --x-install-root="$VCPKG_ROOT/installed"; then
-          find "${VCPKG_ROOT}/" -name "*.log" | while read -r _1; do
-            echo "$_1:"
-            echo "======"
-            cat "$_1"
-            echo "======"
-            echo ""
-          done
+        Write-Host "=== Installing vcpkg dependencies ==="
+        cd "$env:GITHUB_WORKSPACE\rustdesk"
+        
+        Write-Host "Current directory: $(Get-Location)"
+        Write-Host "vcpkg.json content:"
+        Get-Content "vcpkg.json" | Write-Host
+        
+        Write-Host "Running vcpkg install..."
+        & "$env:VCPKG_ROOT\vcpkg.exe" install --triplet x64-windows-static --x-install-root="$env:VCPKG_ROOT\installed"
+        
+        if ($LASTEXITCODE -ne 0) {
+          Write-Host "❌ vcpkg install failed with exit code: $LASTEXITCODE"
+          Write-Host "=== Checking for error logs ==="
+          Get-ChildItem "$env:VCPKG_ROOT" -Filter "*.log" -Recurse | ForEach-Object {
+            Write-Host "=== $($_.FullName) ==="
+            Get-Content $_.FullName | Write-Host
+            Write-Host "========================"
+          }
           exit 1
-        fi
+        }
+        
+        Write-Host "✅ vcpkg dependencies installed successfully"
         
     - name: Apply configuration
       shell: powershell
