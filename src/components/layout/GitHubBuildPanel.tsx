@@ -113,8 +113,45 @@ export const GitHubBuildPanel: React.FC<GitHubBuildPanelProps> = ({ config, onCl
         enable_debug: config.build?.ENABLE_DEBUG_MODE || false
       };
 
+      console.log('=== GitHub Workflow Execution Debug ===');
+      console.log('Owner:', githubConfig.owner);
+      console.log('Repo:', githubConfig.repo);
+      console.log('Workflow inputs:', workflowInputs);
+
+      // Primero verificar si el workflow existe
+      const workflowInfoUrl = `https://api.github.com/repos/${githubConfig.owner}/${githubConfig.repo}/actions/workflows/build-rustdesk-final.yml`;
+      console.log('Checking workflow exists at:', workflowInfoUrl);
+      
+      try {
+        const workflowInfoResponse = await fetch(workflowInfoUrl, {
+          headers: {
+            'Authorization': `token ${githubConfig.token}`,
+            'Accept': 'application/vnd.github.v3+json'
+          }
+        });
+        
+        if (workflowInfoResponse.ok) {
+          const workflowInfo = await workflowInfoResponse.json();
+          console.log('Workflow found:', workflowInfo.name, 'State:', workflowInfo.state);
+          console.log('Workflow triggers:', workflowInfo);
+        } else {
+          const errorText = await workflowInfoResponse.text();
+          console.error('Workflow not found or accessible:', workflowInfoResponse.status, errorText);
+          setBuildStatus({
+            status: 'error',
+            message: `Workflow no encontrado (${workflowInfoResponse.status}): ${errorText}`
+          });
+          return;
+        }
+      } catch (error) {
+        console.error('Error checking workflow:', error);
+      }
+
       // Ejecutar el workflow
-      const workflowResponse = await fetch(`https://api.github.com/repos/${githubConfig.owner}/${githubConfig.repo}/actions/workflows/build-rustdesk-final.yml/dispatches`, {
+      const workflowUrl = `https://api.github.com/repos/${githubConfig.owner}/${githubConfig.repo}/actions/workflows/build-rustdesk-final.yml/dispatches`;
+      console.log('Workflow URL:', workflowUrl);
+      
+      const workflowResponse = await fetch(workflowUrl, {
         method: 'POST',
         headers: {
           'Authorization': `token ${githubConfig.token}`,
@@ -129,6 +166,21 @@ export const GitHubBuildPanel: React.FC<GitHubBuildPanelProps> = ({ config, onCl
 
       if (!workflowResponse.ok) {
         const errorText = await workflowResponse.text();
+        console.error('=== Workflow Error Details ===');
+        console.error('Status:', workflowResponse.status);
+        console.error('Status Text:', workflowResponse.statusText);
+        console.error('Error Response:', errorText);
+        console.error('Request URL:', workflowUrl);
+        console.error('Request Headers:', {
+          'Authorization': 'token [REDACTED]',
+          'Accept': 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json'
+        });
+        console.error('Request Body:', JSON.stringify({
+          ref: 'main',
+          inputs: workflowInputs
+        }, null, 2));
+        
         setBuildStatus({
           status: 'error',
           message: `Error al ejecutar el workflow: ${workflowResponse.status} - ${errorText}`
