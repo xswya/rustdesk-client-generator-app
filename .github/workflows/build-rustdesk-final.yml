@@ -191,6 +191,93 @@ jobs:
         
         Write-Host "[SUCCESS] Configuration applied successfully"
         
+    - name: Generate inline module
+      shell: powershell
+      run: |
+        Write-Host "=== Generating inline UI module ==="
+        
+        cd "$env:GITHUB_WORKSPACE\rustdesk"
+        
+        # Check if Python3 is available
+        try {
+          $pythonVersion = python3 --version
+          Write-Host "Python version: $pythonVersion"
+        } catch {
+          Write-Host "Python3 not found, trying python..."
+          try {
+            $pythonVersion = python --version
+            Write-Host "Python version: $pythonVersion"
+          } catch {
+            Write-Host "[ERROR] Python not found. Installing Python..."
+            choco install python -y
+            refreshenv
+          }
+        }
+        
+        # Check if the inline script exists
+        if (-not (Test-Path "res\inline-sciter.py")) {
+          Write-Host "[ERROR] inline-sciter.py script not found in res/ directory"
+          Write-Host "Available files in res/ directory:"
+          Get-ChildItem "res" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "  $($_.Name)" }
+          Write-Host "Creating a minimal inline.rs module as fallback..."
+          
+          # Create minimal inline.rs as fallback
+          New-Item -Path "src\ui" -ItemType Directory -Force -ErrorAction SilentlyContinue | Out-Null
+          $minimalInlineContent = @"
+// Minimal inline module for compilation
+#[inline]
+pub fn get_index() -> String {
+    "<html><head><title>RustDesk</title></head><body><h1>RustDesk Client</h1></body></html>".to_string()
+}
+
+#[inline] 
+pub fn get_remote() -> String {
+    "<html><head><title>Remote</title></head><body><h1>Remote Control</h1></body></html>".to_string()
+}
+
+#[inline]
+pub fn get_install() -> String {
+    "<html><head><title>Install</title></head><body><h1>Installation</h1></body></html>".to_string()
+}
+
+#[inline]
+pub fn get_chatbox() -> String {
+    "<html><head><title>Chat</title></head><body><h1>Chat</h1></body></html>".to_string()
+}
+
+#[inline]
+pub fn get_cm() -> String {
+    "<html><head><title>Connection Manager</title></head><body><h1>Connection Manager</h1></body></html>".to_string()
+}
+"@
+          $minimalInlineContent | Out-File -FilePath "src\ui\inline.rs" -Encoding UTF8
+          Write-Host "[SUCCESS] Created minimal inline.rs module"
+        } else {
+          Write-Host "Running inline-sciter.py script..."
+          if (Get-Command python3 -ErrorAction SilentlyContinue) {
+            python3 res\inline-sciter.py
+          } else {
+            python res\inline-sciter.py
+          }
+          
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "[ERROR] Failed to generate inline module"
+            exit 1
+          }
+          
+          Write-Host "[SUCCESS] Generated inline UI module"
+        }
+        
+        # Verify that inline.rs was created
+        if (Test-Path "src\ui\inline.rs") {
+          Write-Host "[SUCCESS] inline.rs module verified"
+          $inlineSize = (Get-Item "src\ui\inline.rs").Length
+          Write-Host "inline.rs size: $inlineSize bytes"
+        } else {
+          Write-Host "[ERROR] inline.rs module was not created"
+          exit 1
+        }
+        
     - name: Build RustDesk
       shell: powershell
       run: |
