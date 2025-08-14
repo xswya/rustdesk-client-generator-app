@@ -75,32 +75,33 @@ export const GitHubBuildPanel: React.FC<GitHubBuildPanelProps> = ({ config, onCl
         message: 'Iniciando workflow de GitHub Actions...'
       });
 
-      // Filtrar el objeto config para excluir la sección build que contiene campos duplicados
+      // Crear el objeto config completo incluyendo la sección build
       console.log('=== DEBUG: Config original ===');
       console.log(config);
       console.log('=== DEBUG: Config.build ===');
       console.log(config.build);
       
-      // Crear un nuevo objeto sin la sección build para evitar claves duplicadas
-      const configWithoutBuild = {
+      // Usar el config completo con todas las secciones
+      const fullConfig = {
         server: config.server,
         security: config.security,
         branding: config.branding,
-        advanced: config.advanced
+        advanced: config.advanced,
+        build: config.build
       };
       
-      console.log('=== DEBUG: Config sin build ===');
-      console.log(configWithoutBuild);
+      console.log('=== DEBUG: Config completo ===');
+      console.log(fullConfig);
       
-      const configJson = JSON.stringify(configWithoutBuild);
+      const configJson = JSON.stringify(fullConfig);
       console.log('=== DEBUG: Config JSON (length:', configJson.length, ') ===');
       console.log(configJson);
       
-      // Verificar que no contiene la palabra "build"
+      // Verificar que contiene la sección build
       if (configJson.includes('"build"')) {
-        console.error('ERROR: El JSON aún contiene la sección build!');
+        console.log('✅ Confirmado: El JSON contiene la sección build correctamente');
       } else {
-        console.log('✅ Confirmado: El JSON NO contiene la sección build');
+        console.error('ERROR: El JSON NO contiene la sección build!');
       }
       
       const workflowInputs = {
@@ -108,7 +109,7 @@ export const GitHubBuildPanel: React.FC<GitHubBuildPanelProps> = ({ config, onCl
         executable_name: config.branding?.APP_NAME || 'rustdesk-custom',
         rustdesk_branch: config.build?.RUSTDESK_BRANCH || 'master',
         target_arch: config.build?.TARGET_ARCH || 'x86_64',
-        enable_portable: config.build?.ENABLE_PORTABLE_MODE || true,
+        enable_portable: config.build?.ENABLE_PORTABLE_MODE || false,
         include_installer: config.build?.INCLUDE_INSTALLER || true,
         enable_debug: config.build?.ENABLE_DEBUG_MODE || false
       };

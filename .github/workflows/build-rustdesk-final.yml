@@ -283,21 +283,25 @@ jobs:
         }
         
         # Build configuration
-        if ($config.build.VERSION -and $config.build.VERSION.Length -gt 0) {
+        if ($config.build -and $config.build.VERSION -and $config.build.VERSION.Length -gt 0) {
           $rustConfigLines += "pub const VERSION: &str = `"$($config.build.VERSION)`";"
         } else {
           $rustConfigLines += "pub const VERSION: &str = `"1.0.0`";"
         }
         
-        if ($config.build.BUILD_DESCRIPTION -and $config.build.BUILD_DESCRIPTION.Length -gt 0) {
+        if ($config.build -and $config.build.BUILD_DESCRIPTION -and $config.build.BUILD_DESCRIPTION.Length -gt 0) {
           $rustConfigLines += "pub const BUILD_DESCRIPTION: Option<&str> = Some(`"$($config.build.BUILD_DESCRIPTION)`");"
         } else {
           $rustConfigLines += "pub const BUILD_DESCRIPTION: Option<&str> = None;"
         }
         
-        $rustConfigLines += "pub const SIGN_EXECUTABLE: bool = $($config.build.SIGN_EXECUTABLE.ToString().ToLower());"
+        if ($config.build -and $config.build.SIGN_EXECUTABLE) {
+          $rustConfigLines += "pub const SIGN_EXECUTABLE: bool = $($config.build.SIGN_EXECUTABLE.ToString().ToLower());"
+        } else {
+          $rustConfigLines += "pub const SIGN_EXECUTABLE: bool = false;"
+        }
         
-        if ($config.build.TARGET_ARCH -and $config.build.TARGET_ARCH.Length -gt 0) {
+        if ($config.build -and $config.build.TARGET_ARCH -and $config.build.TARGET_ARCH.Length -gt 0) {
           $rustConfigLines += "pub const TARGET_ARCH: &str = `"$($config.build.TARGET_ARCH)`";"
         } else {
           $rustConfigLines += "pub const TARGET_ARCH: &str = `"x86_64`";"
@@ -577,7 +581,7 @@ jobs:
           
           # Create installer script file
           $productName = if ($config.branding.PRODUCT_NAME) { $config.branding.PRODUCT_NAME } else { "RustDesk" }
-          $productVersion = if ($config.build.VERSION) { $config.build.VERSION } else { "1.0.0" }
+          $productVersion = if ($config.build -and $config.build.VERSION) { $config.build.VERSION } else { "1.0.0" }
           $companyName = if ($config.branding.COMPANY_NAME) { $config.branding.COMPANY_NAME } else { $productName }
           
           $installerContent = @(
