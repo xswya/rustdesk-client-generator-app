@@ -104,13 +104,15 @@ export const GitHubBuildPanel: React.FC<GitHubBuildPanelProps> = ({ config, onCl
         console.error('ERROR: El JSON NO contiene la sección build!');
       }
       
+      // Usar solo los inputs básicos que funcionaban antes
       const workflowInputs = {
         config_json: configJson,
         executable_name: String(config.build?.EXECUTABLE_NAME || config.branding?.APP_NAME || 'rustdesk-custom'),
         rustdesk_branch: String(config.build?.RUSTDESK_BRANCH || 'master'),
         target_arch: String(config.build?.TARGET_ARCH || 'x86_64'),
         enable_portable: Boolean(config.build?.ENABLE_PORTABLE_MODE),
-        include_installer: Boolean(config.build?.INCLUDE_INSTALLER !== false), // Use explicit check to handle boolean properly
+        include_installer: Boolean(config.build?.INCLUDE_INSTALLER !== false),
+        create_installer: Boolean(config.build?.INCLUDE_INSTALLER !== false), // Alias for include_installer
         enable_debug: Boolean(config.build?.ENABLE_DEBUG_MODE)
       };
 

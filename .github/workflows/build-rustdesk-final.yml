@@ -45,54 +45,6 @@ on:
         required: false
         type: boolean
         default: false
-      # Branding options
-      company_name:
-        description: 'Company name for branding'
-        required: false
-        type: string
-        default: ''
-      logo_url:
-        description: 'Logo URL for branding'
-        required: false
-        type: string
-        default: ''
-      support_url:
-        description: 'Support URL'
-        required: false
-        type: string
-        default: ''
-      # Build options
-      version:
-        description: 'Application version'
-        required: false
-        type: string
-        default: '1.0.0'
-      sign_executable:
-        description: 'Sign the executable'
-        required: false
-        type: boolean
-        default: false
-      # Advanced options
-      custom_stun_servers:
-        description: 'Custom STUN servers'
-        required: false
-        type: string
-        default: ''
-      disable_tcp_tunneling:
-        description: 'Disable TCP tunneling'
-        required: false
-        type: boolean
-        default: false
-      enable_hardware_acceleration:
-        description: 'Enable hardware acceleration'
-        required: false
-        type: boolean
-        default: true
-      auto_update_url:
-        description: 'Auto update URL'
-        required: false
-        type: string
-        default: ''
 
 env:
   RUST_VERSION: 1.75
@@ -215,156 +167,12 @@ jobs:
         # Create simple Rust config file using separate lines
         $rustConfigLines = @()
         $rustConfigLines += "// Auto-generated configuration"
-        
-        # Server configuration
         $rustConfigLines += "pub const RENDEZVOUS_SERVER: &str = `"$($config.server.RENDEZVOUS_SERVER)`";"
-        
-        # RELAY_SERVER defaults to RENDEZVOUS_SERVER if not specified
-        if ($config.server.RELAY_SERVER -and $config.server.RELAY_SERVER.Length -gt 0) {
-          $rustConfigLines += "pub const RELAY_SERVER: &str = `"$($config.server.RELAY_SERVER)`";"
-        } else {
-          $rustConfigLines += "pub const RELAY_SERVER: &str = `"$($config.server.RENDEZVOUS_SERVER)`";"
-        }
-        
-        if ($config.server.API_SERVER -and $config.server.API_SERVER.Length -gt 0) {
-          $rustConfigLines += "pub const API_SERVER: &str = `"$($config.server.API_SERVER)`";"
-        } else {
-          $rustConfigLines += "pub const API_SERVER: &str = `"`";"
-        }
-        
-        # Map RS_PUB_KEY to KEY for RustDesk compatibility
-        $rustConfigLines += "pub const KEY: &str = `"$($config.server.RS_PUB_KEY)`";"
-        
-        # Branding configuration
+        $rustConfigLines += "pub const RELAY_SERVER: &str = `"$($config.server.RELAY_SERVER)`";"
+        $rustConfigLines += "pub const API_SERVER: &str = `"$($config.server.API_SERVER)`";"
+        $rustConfigLines += "pub const KEY: &str = `"$($config.server.KEY)`";"
         $rustConfigLines += "pub const PRODUCT_NAME: &str = `"$($config.branding.PRODUCT_NAME)`";"
         $rustConfigLines += "pub const APP_NAME: &str = `"$($config.branding.APP_NAME)`";"
-        
-        # Optional branding fields
-        if ($config.branding.COMPANY_NAME -and $config.branding.COMPANY_NAME.Length -gt 0) {
-          $rustConfigLines += "pub const COMPANY_NAME: &str = `"$($config.branding.COMPANY_NAME)`";"
-        } else {
-          $rustConfigLines += "pub const COMPANY_NAME: &str = `"`";"
-        }
-        
-        if ($config.branding.WEBSITE_URL -and $config.branding.WEBSITE_URL.Length -gt 0) {
-          $rustConfigLines += "pub const WEBSITE_URL: Option<&str> = Some(`"$($config.branding.WEBSITE_URL)`");"
-        } else {
-          $rustConfigLines += "pub const WEBSITE_URL: Option<&str> = None;"
-        }
-        
-        if ($config.branding.LOGO_URL -and $config.branding.LOGO_URL.Length -gt 0) {
-          $rustConfigLines += "pub const LOGO_URL: Option<&str> = Some(`"$($config.branding.LOGO_URL)`");"
-        } else {
-          $rustConfigLines += "pub const LOGO_URL: Option<&str> = None;"
-        }
-        
-        if ($config.branding.ICON_URL -and $config.branding.ICON_URL.Length -gt 0) {
-          $rustConfigLines += "pub const ICON_URL: Option<&str> = Some(`"$($config.branding.ICON_URL)`");"
-        } else {
-          $rustConfigLines += "pub const ICON_URL: Option<&str> = None;"
-        }
-        
-        if ($config.branding.WELCOME_TEXT -and $config.branding.WELCOME_TEXT.Length -gt 0) {
-          $rustConfigLines += "pub const WELCOME_TEXT: Option<&str> = Some(`"$($config.branding.WELCOME_TEXT)`");"
-        } else {
-          $rustConfigLines += "pub const WELCOME_TEXT: Option<&str> = None;"
-        }
-        
-        if ($config.branding.SUPPORT_INFO -and $config.branding.SUPPORT_INFO.Length -gt 0) {
-          $rustConfigLines += "pub const SUPPORT_INFO: Option<&str> = Some(`"$($config.branding.SUPPORT_INFO)`");"
-        } else {
-          $rustConfigLines += "pub const SUPPORT_INFO: Option<&str> = None;"
-        }
-        
-        if ($config.branding.SUPPORT_URL -and $config.branding.SUPPORT_URL.Length -gt 0) {
-          $rustConfigLines += "pub const SUPPORT_URL: Option<&str> = Some(`"$($config.branding.SUPPORT_URL)`");"
-        } else {
-          $rustConfigLines += "pub const SUPPORT_URL: Option<&str> = None;"
-        }
-        
-        # Build configuration
-        if ($config.build -and $config.build.VERSION -and $config.build.VERSION.Length -gt 0) {
-          $rustConfigLines += "pub const VERSION: &str = `"$($config.build.VERSION)`";"
-        } else {
-          $rustConfigLines += "pub const VERSION: &str = `"1.0.0`";"
-        }
-        
-        if ($config.build -and $config.build.BUILD_DESCRIPTION -and $config.build.BUILD_DESCRIPTION.Length -gt 0) {
-          $rustConfigLines += "pub const BUILD_DESCRIPTION: Option<&str> = Some(`"$($config.build.BUILD_DESCRIPTION)`");"
-        } else {
-          $rustConfigLines += "pub const BUILD_DESCRIPTION: Option<&str> = None;"
-        }
-        
-        if ($config.build -and $config.build.SIGN_EXECUTABLE) {
-          $rustConfigLines += "pub const SIGN_EXECUTABLE: bool = $($config.build.SIGN_EXECUTABLE.ToString().ToLower());"
-        } else {
-          $rustConfigLines += "pub const SIGN_EXECUTABLE: bool = false;"
-        }
-        
-        if ($config.build -and $config.build.TARGET_ARCH -and $config.build.TARGET_ARCH.Length -gt 0) {
-          $rustConfigLines += "pub const TARGET_ARCH: &str = `"$($config.build.TARGET_ARCH)`";"
-        } else {
-          $rustConfigLines += "pub const TARGET_ARCH: &str = `"x86_64`";"
-        }
-        
-        # Security configuration
-        if ($config.security.PRESET_PASSWORD -and $config.security.PRESET_PASSWORD.Length -gt 0) {
-          $rustConfigLines += "pub const PRESET_PASSWORD: Option<&str> = Some(`"$($config.security.PRESET_PASSWORD)`");"
-        } else {
-          $rustConfigLines += "pub const PRESET_PASSWORD: Option<&str> = None;"
-        }
-        
-        if ($config.security.ACCESS_KEY -and $config.security.ACCESS_KEY.Length -gt 0) {
-          $rustConfigLines += "pub const ACCESS_KEY: Option<&str> = Some(`"$($config.security.ACCESS_KEY)`");"
-        } else {
-          $rustConfigLines += "pub const ACCESS_KEY: Option<&str> = None;"
-        }
-        
-        $rustConfigLines += "pub const PRESET_REMOVE_WALLPAPER: bool = $($config.security.PRESET_REMOVE_WALLPAPER.ToString().ToLower());"
-        $rustConfigLines += "pub const PRESET_BLOCK_INPUT: bool = $($config.security.PRESET_BLOCK_INPUT.ToString().ToLower());"
-        $rustConfigLines += "pub const PRESET_PRIVACY_MODE: bool = $($config.security.PRESET_PRIVACY_MODE.ToString().ToLower());"
-        $rustConfigLines += "pub const PRESET_RECORD_SESSION: bool = $($config.security.PRESET_RECORD_SESSION.ToString().ToLower());"
-        
-        # Advanced configuration
-        if ($config.advanced.CUSTOM_TCP_PORT -and $config.advanced.CUSTOM_TCP_PORT.Length -gt 0) {
-          $rustConfigLines += "pub const CUSTOM_TCP_PORT: Option<u16> = Some($($config.advanced.CUSTOM_TCP_PORT));"
-        } else {
-          $rustConfigLines += "pub const CUSTOM_TCP_PORT: Option<u16> = None;"
-        }
-        
-        if ($config.advanced.CUSTOM_UDP_PORT -and $config.advanced.CUSTOM_UDP_PORT.Length -gt 0) {
-          $rustConfigLines += "pub const CUSTOM_UDP_PORT: Option<u16> = Some($($config.advanced.CUSTOM_UDP_PORT));"
-        } else {
-          $rustConfigLines += "pub const CUSTOM_UDP_PORT: Option<u16> = None;"
-        }
-        
-        $rustConfigLines += "pub const DISABLE_AUDIO: bool = $($config.advanced.DISABLE_AUDIO.ToString().ToLower());"
-        $rustConfigLines += "pub const ENABLE_FILE_TRANSFER: bool = $($config.advanced.ENABLE_FILE_TRANSFER.ToString().ToLower());"
-        $rustConfigLines += "pub const DISABLE_CLIPBOARD: bool = $($config.advanced.DISABLE_CLIPBOARD.ToString().ToLower());"
-        $rustConfigLines += "pub const DEFAULT_VIDEO_QUALITY: &str = `"$($config.advanced.DEFAULT_VIDEO_QUALITY)`";"
-        $rustConfigLines += "pub const MAX_FPS: u32 = $($config.advanced.MAX_FPS);"
-        $rustConfigLines += "pub const ENABLE_HARDWARE_CODEC: bool = $($config.advanced.ENABLE_HARDWARE_CODEC.ToString().ToLower());"
-        $rustConfigLines += "pub const ENABLE_DIRECT_IP_ACCESS: bool = $($config.advanced.ENABLE_DIRECT_IP_ACCESS.ToString().ToLower());"
-        
-        # Additional advanced options
-        if ($config.advanced.CUSTOM_STUN_SERVERS -and $config.advanced.CUSTOM_STUN_SERVERS.Length -gt 0) {
-          $rustConfigLines += "pub const CUSTOM_STUN_SERVERS: Option<&str> = Some(`"$($config.advanced.CUSTOM_STUN_SERVERS)`");"
-        } else {
-          $rustConfigLines += "pub const CUSTOM_STUN_SERVERS: Option<&str> = None;"
-        }
-        
-        $rustConfigLines += "pub const DISABLE_TCP_TUNNELING: bool = $($config.advanced.DISABLE_TCP_TUNNELING.ToString().ToLower());"
-        $rustConfigLines += "pub const ENABLE_HARDWARE_ACCELERATION: bool = $($config.advanced.ENABLE_HARDWARE_ACCELERATION.ToString().ToLower());"
-        
-        if ($config.advanced.AUTO_UPDATE_URL -and $config.advanced.AUTO_UPDATE_URL.Length -gt 0) {
-          $rustConfigLines += "pub const AUTO_UPDATE_URL: Option<&str> = Some(`"$($config.advanced.AUTO_UPDATE_URL)`");"
-        } else {
-          $rustConfigLines += "pub const AUTO_UPDATE_URL: Option<&str> = None;"
-        }
-        
-        # Additional theme and localization settings
-        $rustConfigLines += "pub const DEFAULT_THEME: &str = `"$($config.advanced.theme)`";"
-        $rustConfigLines += "pub const DEFAULT_LANGUAGE: &str = `"$($config.advanced.lang)`";"
         
         $rustConfigLines | Out-File -FilePath "src\config.rs" -Encoding UTF8
         Write-Host "[SUCCESS] Rust config created"
@@ -483,16 +291,6 @@ jobs:
         $env:RUSTFLAGS = "-C target-feature=+crt-static"
         $env:RUST_BACKTRACE = "1"
         
-        # Configure portable mode if enabled
-        if ("${{ inputs.enable_portable }}" -eq "true") {
-          Write-Host "[PORTABLE] Enabling portable mode..."
-          $env:PORTABLE = "1"
-          # Set Rust feature for portable build
-          $portableFeature = "--features portable"
-        } else {
-          $portableFeature = ""
-        }
-        
         Write-Host "Starting Cargo build..."
         if ("${{ inputs.enable_debug }}" -eq "true") {
           Write-Host "Build mode: Debug"
@@ -502,10 +300,10 @@ jobs:
         
         if ("${{ inputs.enable_debug }}" -eq "true") {
           Write-Host "[DEBUG] Building in debug mode..."
-          cargo build --features inline $portableFeature --verbose
+          cargo build --features inline --verbose
         } else {
           Write-Host "[RELEASE] Building in release mode..."
-          cargo build --release --features inline $portableFeature --verbose
+          cargo build --release --features inline --verbose
         }
         
         if ($LASTEXITCODE -ne 0) {
@@ -572,22 +370,16 @@ jobs:
           Write-Host "[SUCCESS] Copied executable to: $finalExe"
         }
         
-        # Create installer if requested AND not in portable mode
+        # Create installer if requested (use include_installer if provided, otherwise fallback to create_installer)
         $shouldCreateInstaller = if ("${{ inputs.include_installer }}" -ne "") { "${{ inputs.include_installer }}" } else { "${{ inputs.create_installer }}" }
-        $isPortableMode = "${{ inputs.enable_portable }}" -eq "true"
-        
-        if ($shouldCreateInstaller -eq "true" -and -not $isPortableMode) {
+        if ($shouldCreateInstaller -eq "true") {
           Write-Host "Creating installer..."
           
           # Create installer script file
-          $productName = if ($config.branding.PRODUCT_NAME) { $config.branding.PRODUCT_NAME } else { "RustDesk" }
-          $productVersion = if ($config.build -and $config.build.VERSION) { $config.build.VERSION } else { "1.0.0" }
-          $companyName = if ($config.branding.COMPANY_NAME) { $config.branding.COMPANY_NAME } else { $productName }
-          
           $installerContent = @(
-            "!define PRODUCT_NAME `"$productName`"",
-            "!define PRODUCT_VERSION `"$productVersion`"",
-            "!define PRODUCT_PUBLISHER `"$companyName`"",
+            "!define PRODUCT_NAME `"$($config.branding.PRODUCT_NAME)`"",
+            "!define PRODUCT_VERSION `"1.0.0`"",
+            "!define PRODUCT_PUBLISHER `"$($config.branding.PRODUCT_NAME)`"",
             "",
             "SetCompressor lzma",
             "RequestExecutionLevel admin",
@@ -625,22 +417,6 @@ jobs:
           } else {
             Write-Host "⚠️ Installer creation failed, but continuing..."
           }
-        } elseif ($isPortableMode) {
-          Write-Host "[PORTABLE] Skipping installer creation for portable mode"
-          Write-Host "[INFO] Portable executable: $finalExe"
-        } else {
-          Write-Host "[INFO] Installer creation disabled"
-        }
-        
-        # Display build summary
-        Write-Host ""
-        Write-Host "=== BUILD SUMMARY ==="
-        Write-Host "Mode: $(if ($isPortableMode) { 'Portable' } else { 'Standard' })"
-        Write-Host "Debug: ${{ inputs.enable_debug }}"
-        Write-Host "Installer: $(if ($shouldCreateInstaller -eq 'true' -and -not $isPortableMode) { 'Yes' } else { 'No' })"
-        Write-Host "Executable: $finalExe"
-        if (Test-Path "$executableName-installer.exe") {
-          Write-Host "Installer: $executableName-installer.exe"
         }
         
         Write-Host "[SUCCESS] Artifacts prepared successfully"
