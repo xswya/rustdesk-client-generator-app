@@ -344,7 +344,7 @@ jobs:
         }
         
         if (-not $builtExecutable) {
-          Write-Host "[ERROR] No executable found. Available files in $buildDir:"
+          Write-Host "[ERROR] No executable found. Available files in ${buildDir}:"
           Get-ChildItem $buildDir -Filter "*.exe" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "  $($_.Name)" }
           exit 1
         }
