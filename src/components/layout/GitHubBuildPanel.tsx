@@ -106,13 +106,30 @@ export const GitHubBuildPanel: React.FC<GitHubBuildPanelProps> = ({ config, onCl
       
       const workflowInputs = {
         config_json: configJson,
-        executable_name: config.build?.EXECUTABLE_NAME || config.branding?.APP_NAME || 'rustdesk-custom',
-        rustdesk_branch: config.build?.RUSTDESK_BRANCH || 'master',
-        target_arch: config.build?.TARGET_ARCH || 'x86_64',
-        enable_portable: config.build?.ENABLE_PORTABLE_MODE || false,
-        include_installer: config.build?.INCLUDE_INSTALLER !== false, // Use explicit check to handle boolean properly
-        enable_debug: config.build?.ENABLE_DEBUG_MODE || false
+        executable_name: String(config.build?.EXECUTABLE_NAME || config.branding?.APP_NAME || 'rustdesk-custom'),
+        rustdesk_branch: String(config.build?.RUSTDESK_BRANCH || 'master'),
+        target_arch: String(config.build?.TARGET_ARCH || 'x86_64'),
+        enable_portable: Boolean(config.build?.ENABLE_PORTABLE_MODE),
+        include_installer: Boolean(config.build?.INCLUDE_INSTALLER !== false), // Use explicit check to handle boolean properly
+        enable_debug: Boolean(config.build?.ENABLE_DEBUG_MODE)
       };
+
+      // Validate required inputs
+      if (!workflowInputs.config_json || workflowInputs.config_json === '{}') {
+        setBuildStatus({
+          status: 'error',
+          message: 'Error: Configuración vacía. Complete al menos la configuración del servidor.'
+        });
+        return;
+      }
+
+      if (!workflowInputs.executable_name || workflowInputs.executable_name.length < 3) {
+        setBuildStatus({
+          status: 'error',
+          message: 'Error: Nombre del ejecutable requerido (mínimo 3 caracteres).'
+        });
+        return;
+      }
 
       console.log('=== GitHub Workflow Execution Debug ===');
       console.log('Owner:', githubConfig.owner);
@@ -159,6 +176,13 @@ export const GitHubBuildPanel: React.FC<GitHubBuildPanelProps> = ({ config, onCl
       const workflowUrl = `https://api.github.com/repos/${githubConfig.owner}/${githubConfig.repo}/actions/workflows/build-rustdesk-final.yml/dispatches`;
       console.log('Workflow URL:', workflowUrl);
       
+      console.log('=== Final payload being sent ===');
+      const requestPayload = {
+        ref: 'main',
+        inputs: workflowInputs
+      };
+      console.log(JSON.stringify(requestPayload, null, 2));
+      
       const workflowResponse = await fetch(workflowUrl, {
         method: 'POST',
         headers: {
@@ -166,10 +190,7 @@ export const GitHubBuildPanel: React.FC<GitHubBuildPanelProps> = ({ config, onCl
           'Accept': 'application/vnd.github.v3+json',
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          ref: 'main',
-          inputs: workflowInputs
-        })
+        body: JSON.stringify(requestPayload)
       });
 
       if (!workflowResponse.ok) {
@@ -189,9 +210,32 @@ export const GitHubBuildPanel: React.FC<GitHubBuildPanelProps> = ({ config, onCl
           inputs: workflowInputs
         }, null, 2));
         
+        // Parse error response if it's JSON
+        let errorMessage = errorText;
+        try {
+          const errorJson = JSON.parse(errorText);
+          if (errorJson.message) {
+            errorMessage = errorJson.message;
+            console.error('GitHub API Error:', errorJson);
+            
+            // Specific error messages for common issues
+            if (errorMessage.includes('Repository access blocked')) {
+              errorMessage = 'Token no tiene permisos para ejecutar workflows. Verifica los scopes del token.';
+            } else if (errorMessage.includes('Bad credentials')) {
+              errorMessage = 'Token de GitHub inválido. Verifica el token en configuración.';
+            } else if (errorMessage.includes('Not Found')) {
+              errorMessage = 'Workflow no encontrado. Verifica que el archivo workflow existe en el repositorio.';
+            } else if (errorMessage.includes('workflow_dispatch')) {
+              errorMessage = 'El workflow no está configurado para dispatch manual. Revisa el trigger.';
+            }
+          }
+        } catch (e) {
+          // Error response is not JSON, use as-is
+        }
+        
         setBuildStatus({
           status: 'error',
-          message: `Error al ejecutar el workflow: ${workflowResponse.status} - ${errorText}`
+          message: `Error al ejecutar el workflow (${workflowResponse.status}): ${errorMessage}`
         });
         return;
       }
