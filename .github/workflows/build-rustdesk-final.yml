@@ -223,34 +223,28 @@ jobs:
           
           # Create minimal inline.rs as fallback
           New-Item -Path "src\ui" -ItemType Directory -Force -ErrorAction SilentlyContinue | Out-Null
-          $minimalInlineContent = @"
-// Minimal inline module for compilation
-#[inline]
-pub fn get_index() -> String {
-    "<html><head><title>RustDesk</title></head><body><h1>RustDesk Client</h1></body></html>".to_string()
-}
-
-#[inline] 
-pub fn get_remote() -> String {
-    "<html><head><title>Remote</title></head><body><h1>Remote Control</h1></body></html>".to_string()
-}
-
-#[inline]
-pub fn get_install() -> String {
-    "<html><head><title>Install</title></head><body><h1>Installation</h1></body></html>".to_string()
-}
-
-#[inline]
-pub fn get_chatbox() -> String {
-    "<html><head><title>Chat</title></head><body><h1>Chat</h1></body></html>".to_string()
-}
-
-#[inline]
-pub fn get_cm() -> String {
-    "<html><head><title>Connection Manager</title></head><body><h1>Connection Manager</h1></body></html>".to_string()
-}
-"@
-          $minimalInlineContent | Out-File -FilePath "src\ui\inline.rs" -Encoding UTF8
+          $inlineContent = "// Minimal inline module for compilation`n"
+          $inlineContent += "#[inline]`n"
+          $inlineContent += "pub fn get_index() -> String {`n"
+          $inlineContent += '    "<html><head><title>RustDesk</title></head><body><h1>RustDesk Client</h1></body></html>".to_string()`n'
+          $inlineContent += "}`n`n"
+          $inlineContent += "#[inline]`n"
+          $inlineContent += "pub fn get_remote() -> String {`n"
+          $inlineContent += '    "<html><head><title>Remote</title></head><body><h1>Remote Control</h1></body></html>".to_string()`n'
+          $inlineContent += "}`n`n"
+          $inlineContent += "#[inline]`n"
+          $inlineContent += "pub fn get_install() -> String {`n"
+          $inlineContent += '    "<html><head><title>Install</title></head><body><h1>Installation</h1></body></html>".to_string()`n'
+          $inlineContent += "}`n`n"
+          $inlineContent += "#[inline]`n"
+          $inlineContent += "pub fn get_chatbox() -> String {`n"
+          $inlineContent += '    "<html><head><title>Chat</title></head><body><h1>Chat</h1></body></html>".to_string()`n'
+          $inlineContent += "}`n`n"
+          $inlineContent += "#[inline]`n"
+          $inlineContent += "pub fn get_cm() -> String {`n"
+          $inlineContent += '    "<html><head><title>Connection Manager</title></head><body><h1>Connection Manager</h1></body></html>".to_string()`n'
+          $inlineContent += "}`n"
+          $inlineContent | Out-File -FilePath "src\ui\inline.rs" -Encoding UTF8
           Write-Host "[SUCCESS] Created minimal inline.rs module"
         } else {
           Write-Host "Running inline-sciter.py script..."
