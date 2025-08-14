@@ -72,6 +72,7 @@ export const AdvancedConfigSchema = z.object({
   ENABLE_DIRECT_IP_ACCESS: z.boolean().default(true),
   DISABLE_AUDIO: z.boolean().default(false),
   ENABLE_FILE_TRANSFER: z.boolean().default(true),
+  DISABLE_CLIPBOARD: z.boolean().default(false),
   theme: z.enum(['system', 'dark', 'light']).default('system'),
   lang: z.string().default('es'),
   custom_kv: z.record(z.string()).default({})
@@ -169,6 +170,7 @@ export const defaultConfig: Config = {
     ENABLE_DIRECT_IP_ACCESS: true,
     DISABLE_AUDIO: false,
     ENABLE_FILE_TRANSFER: true,
+    DISABLE_CLIPBOARD: false,
     theme: 'system' as const,
     lang: 'es',
     custom_kv: {}

@@ -174,6 +174,43 @@ jobs:
         $rustConfigLines += "pub const PRODUCT_NAME: &str = `"$($config.branding.PRODUCT_NAME)`";"
         $rustConfigLines += "pub const APP_NAME: &str = `"$($config.branding.APP_NAME)`";"
         
+        # Security configuration
+        if ($config.security.PRESET_PASSWORD -and $config.security.PRESET_PASSWORD.Length -gt 0) {
+          $rustConfigLines += "pub const PRESET_PASSWORD: Option<&str> = Some(`"$($config.security.PRESET_PASSWORD)`");"
+        } else {
+          $rustConfigLines += "pub const PRESET_PASSWORD: Option<&str> = None;"
+        }
+        
+        if ($config.security.ACCESS_KEY -and $config.security.ACCESS_KEY.Length -gt 0) {
+          $rustConfigLines += "pub const ACCESS_KEY: Option<&str> = Some(`"$($config.security.ACCESS_KEY)`");"
+        } else {
+          $rustConfigLines += "pub const ACCESS_KEY: Option<&str> = None;"
+        }
+        
+        $rustConfigLines += "pub const PRESET_REMOVE_WALLPAPER: bool = $($config.security.PRESET_REMOVE_WALLPAPER.ToString().ToLower());"
+        $rustConfigLines += "pub const PRESET_BLOCK_INPUT: bool = $($config.security.PRESET_BLOCK_INPUT.ToString().ToLower());"
+        $rustConfigLines += "pub const PRESET_PRIVACY_MODE: bool = $($config.security.PRESET_PRIVACY_MODE.ToString().ToLower());"
+        $rustConfigLines += "pub const PRESET_RECORD_SESSION: bool = $($config.security.PRESET_RECORD_SESSION.ToString().ToLower());"
+        
+        # Advanced configuration
+        if ($config.advanced.CUSTOM_TCP_PORT -and $config.advanced.CUSTOM_TCP_PORT.Length -gt 0) {
+          $rustConfigLines += "pub const CUSTOM_TCP_PORT: Option<u16> = Some($($config.advanced.CUSTOM_TCP_PORT));"
+        } else {
+          $rustConfigLines += "pub const CUSTOM_TCP_PORT: Option<u16> = None;"
+        }
+        
+        if ($config.advanced.CUSTOM_UDP_PORT -and $config.advanced.CUSTOM_UDP_PORT.Length -gt 0) {
+          $rustConfigLines += "pub const CUSTOM_UDP_PORT: Option<u16> = Some($($config.advanced.CUSTOM_UDP_PORT));"
+        } else {
+          $rustConfigLines += "pub const CUSTOM_UDP_PORT: Option<u16> = None;"
+        }
+        
+        $rustConfigLines += "pub const DISABLE_AUDIO: bool = $($config.advanced.DISABLE_AUDIO.ToString().ToLower());"
+        $rustConfigLines += "pub const ENABLE_FILE_TRANSFER: bool = $($config.advanced.ENABLE_FILE_TRANSFER.ToString().ToLower());"
+        $rustConfigLines += "pub const DISABLE_CLIPBOARD: bool = $($config.advanced.DISABLE_CLIPBOARD.ToString().ToLower());"
+        $rustConfigLines += "pub const DEFAULT_VIDEO_QUALITY: &str = `"$($config.advanced.DEFAULT_VIDEO_QUALITY)`";"
+        $rustConfigLines += "pub const MAX_FPS: u32 = $($config.advanced.MAX_FPS);"
+        
         $rustConfigLines | Out-File -FilePath "src\config.rs" -Encoding UTF8
         Write-Host "[SUCCESS] Rust config created"
         

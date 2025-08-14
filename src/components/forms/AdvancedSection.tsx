@@ -221,6 +221,25 @@ export const AdvancedSection: React.FC<AdvancedSectionProps> = ({ form }) => {
                 </p>
               </div>
             </label>
+
+            <label className="flex items-center space-x-3 p-4 border border-secondary-200 rounded-lg hover:bg-secondary-50 cursor-pointer">
+              <input
+                {...register('advanced.DISABLE_CLIPBOARD')}
+                type="checkbox"
+                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-secondary-300 rounded"
+              />
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-secondary-900">
+                    Deshabilitar Portapapeles
+                  </span>
+                  <Tooltip content="Deshabilita el intercambio de portapapeles entre cliente y servidor.&#10;Mejora la seguridad evitando transferencia accidental de datos." />
+                </div>
+                <p className="text-xs text-secondary-600">
+                  Mejora la seguridad de datos
+                </p>
+              </div>
+            </label>
           </div>
         </div>
 
