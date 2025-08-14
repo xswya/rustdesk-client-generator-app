@@ -182,8 +182,13 @@ jobs:
           $cargoContent = Get-Content "Cargo.toml" -Raw
           
           if ($config.branding.APP_NAME -ne "rustdesk") {
+            # Update package name
             $cargoContent = $cargoContent -replace 'name = "rustdesk"', "name = `"$($config.branding.APP_NAME)`""
             Write-Host "[SUCCESS] Updated package name in Cargo.toml"
+            
+            # Update default-run target to match new package name
+            $cargoContent = $cargoContent -replace 'default-run = "rustdesk"', "default-run = `"$($config.branding.APP_NAME)`""
+            Write-Host "[SUCCESS] Updated default-run target in Cargo.toml"
           }
           
           $cargoContent | Out-File -FilePath "Cargo.toml" -Encoding UTF8
@@ -327,12 +332,21 @@ jobs:
         
         Write-Host "Looking for executable in: $buildDir"
         
-        # Find the built executable
+        # Find the built executable - search in order of likelihood
         $possibleExes = @(
+          "$buildDir\$($config.branding.APP_NAME).exe",
           "$buildDir\rustdesk.exe",
-          "$buildDir\RustDesk.exe",
-          "$buildDir\$($config.branding.APP_NAME).exe"
+          "$buildDir\RustDesk.exe"
         )
+        
+        # Add fallback: any .exe file in the build directory
+        $allExes = Get-ChildItem $buildDir -Filter "*.exe" -ErrorAction SilentlyContinue
+        foreach ($exe in $allExes) {
+          $fullPath = "$buildDir\$($exe.Name)"
+          if ($fullPath -notin $possibleExes) {
+            $possibleExes += $fullPath
+          }
+        }
         
         $builtExecutable = ""
         foreach ($exe in $possibleExes) {
