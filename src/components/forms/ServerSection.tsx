@@ -46,6 +46,21 @@ export const ServerSection: React.FC<ServerSectionProps> = ({ form }) => {
           <div>
             <div className="flex items-center gap-2 mb-2">
               <label className="text-sm font-medium text-secondary-900">
+                Servidor Relay (Opcional)
+              </label>
+              <Tooltip content="FQDN del servidor de relay para el tráfico.&#10;Ejemplo: hbbr.midominio.com&#10;&#10;Si se deja vacío, usará el mismo que RENDEZVOUS_SERVER." />
+            </div>
+            <Input
+              {...register('server.RELAY_SERVER')}
+              placeholder="hbbr.midominio.com"
+              error={errors.server?.RELAY_SERVER?.message}
+              helperText="Opcional - Si está vacío usa el servidor de encuentro"
+            />
+          </div>
+
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <label className="text-sm font-medium text-secondary-900">
                 Clave Pública *
               </label>
               <Tooltip content="Clave pública del servidor en formato Base64.&#10;Se encuentra en el archivo id_ed25519.pub del servidor.&#10;&#10;Ejemplo: OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=" />
@@ -57,21 +72,21 @@ export const ServerSection: React.FC<ServerSectionProps> = ({ form }) => {
               helperText="Clave Base64 del archivo id_ed25519.pub"
             />
           </div>
-        </div>
 
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <label className="text-sm font-medium text-secondary-900">
-              Servidor API (Opcional)
-            </label>
-            <Tooltip content="URL del servidor API para funciones avanzadas.&#10;Recomendado usar HTTPS detrás de un proxy como Nginx.&#10;&#10;Ejemplo: https://hbbs.midominio.com" />
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <label className="text-sm font-medium text-secondary-900">
+                Servidor API (Opcional)
+              </label>
+              <Tooltip content="URL del servidor API para funciones avanzadas.&#10;Recomendado usar HTTPS detrás de un proxy como Nginx.&#10;&#10;Ejemplo: https://hbbs.midominio.com" />
+            </div>
+            <Input
+              {...register('server.API_SERVER')}
+              placeholder="https://hbbs.midominio.com"
+              error={errors.server?.API_SERVER?.message}
+              helperText="URL completa con HTTPS para el API del servidor"
+            />
           </div>
-          <Input
-            {...register('server.API_SERVER')}
-            placeholder="https://hbbs.midominio.com"
-            error={errors.server?.API_SERVER?.message}
-            helperText="URL completa con HTTPS para el API del servidor"
-          />
         </div>
 
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">

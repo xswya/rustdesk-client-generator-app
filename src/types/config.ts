@@ -6,6 +6,11 @@ export const ServerConfigSchema = z.object({
     .min(1, 'El servidor es obligatorio')
     .regex(/^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/, 
       'Debe ser un FQDN válido (ej: hbbs.midominio.com)'),
+  RELAY_SERVER: z.string()
+    .regex(/^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/, 
+      'Debe ser un FQDN válido (ej: hbbr.midominio.com)')
+    .optional()
+    .or(z.literal('')),
   RS_PUB_KEY: z.string()
     .min(1, 'La clave pública es obligatoria')
     .regex(/^[A-Za-z0-9+/]+=*$/, 'Debe ser una clave Base64 válida'),
@@ -73,6 +78,9 @@ export const AdvancedConfigSchema = z.object({
   DISABLE_AUDIO: z.boolean().default(false),
   ENABLE_FILE_TRANSFER: z.boolean().default(true),
   DISABLE_CLIPBOARD: z.boolean().default(false),
+  DISABLE_TCP_TUNNELING: z.boolean().default(false),
+  ENABLE_HARDWARE_ACCELERATION: z.boolean().default(true),
+  AUTO_UPDATE_URL: z.string().optional(),
   theme: z.enum(['system', 'dark', 'light']).default('system'),
   lang: z.string().default('es'),
   custom_kv: z.record(z.string()).default({})
@@ -80,7 +88,7 @@ export const AdvancedConfigSchema = z.object({
 
 export const BuildConfigSchema = z.object({
   EXECUTABLE_NAME: z.string().optional(),
-  VERSION: z.string().regex(/^v\d+\.\d+\.\d+$/, 'Debe seguir el formato vX.Y.Z').default('v1.0.0'),
+  VERSION: z.string().regex(/^\d+\.\d+\.\d+$/, 'Debe seguir el formato X.Y.Z').default('1.0.0'),
   BUILD_DESCRIPTION: z.string().optional(),
   RUSTDESK_BRANCH: z.string().default('master'),
   TARGET_ARCH: z.enum(['x86_64', 'aarch64']).default('x86_64'),
@@ -122,6 +130,7 @@ export type Config = z.infer<typeof ConfigSchema>;
 export const defaultConfig: Config = {
   server: {
     RENDEZVOUS_SERVER: '',
+    RELAY_SERVER: '',
     RS_PUB_KEY: '',
     API_SERVER: ''
   },
@@ -171,13 +180,16 @@ export const defaultConfig: Config = {
     DISABLE_AUDIO: false,
     ENABLE_FILE_TRANSFER: true,
     DISABLE_CLIPBOARD: false,
+    DISABLE_TCP_TUNNELING: false,
+    ENABLE_HARDWARE_ACCELERATION: true,
+    AUTO_UPDATE_URL: '',
     theme: 'system' as const,
     lang: 'es',
     custom_kv: {}
   },
   build: {
     EXECUTABLE_NAME: '',
-    VERSION: 'v1.0.0',
+    VERSION: '1.0.0',
     BUILD_DESCRIPTION: '',
     RUSTDESK_BRANCH: 'master',
     TARGET_ARCH: 'x86_64' as const,
