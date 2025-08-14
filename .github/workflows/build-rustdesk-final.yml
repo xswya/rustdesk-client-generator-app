@@ -381,6 +381,15 @@ jobs:
             "  CreateShortCut `"`$SMPROGRAMS\`${PRODUCT_NAME}\`${PRODUCT_NAME}.lnk`" `"`$INSTDIR\$executableName.exe`"",
             "  CreateShortCut `"`$DESKTOP\`${PRODUCT_NAME}.lnk`" `"`$INSTDIR\$executableName.exe`"",
             "  WriteUninstaller `"`$INSTDIR\Uninstall.exe`"",
+            "SectionEnd",
+            "",
+            "Section `"Uninstall`"",
+            "  Delete `"`$INSTDIR\$executableName.exe`"",
+            "  Delete `"`$INSTDIR\Uninstall.exe`"",
+            "  Delete `"`$SMPROGRAMS\`${PRODUCT_NAME}\`${PRODUCT_NAME}.lnk`"",
+            "  Delete `"`$DESKTOP\`${PRODUCT_NAME}.lnk`"",
+            "  RMDir `"`$SMPROGRAMS\`${PRODUCT_NAME}`"",
+            "  RMDir `"`$INSTDIR`"",
             "SectionEnd"
           )
           
