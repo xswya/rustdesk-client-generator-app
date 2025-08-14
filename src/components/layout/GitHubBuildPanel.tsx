@@ -106,11 +106,11 @@ export const GitHubBuildPanel: React.FC<GitHubBuildPanelProps> = ({ config, onCl
       
       const workflowInputs = {
         config_json: configJson,
-        executable_name: config.branding?.APP_NAME || 'rustdesk-custom',
+        executable_name: config.build?.EXECUTABLE_NAME || config.branding?.APP_NAME || 'rustdesk-custom',
         rustdesk_branch: config.build?.RUSTDESK_BRANCH || 'master',
         target_arch: config.build?.TARGET_ARCH || 'x86_64',
         enable_portable: config.build?.ENABLE_PORTABLE_MODE || false,
-        include_installer: config.build?.INCLUDE_INSTALLER || true,
+        include_installer: config.build?.INCLUDE_INSTALLER !== false, // Use explicit check to handle boolean properly
         enable_debug: config.build?.ENABLE_DEBUG_MODE || false
       };
 
@@ -118,6 +118,13 @@ export const GitHubBuildPanel: React.FC<GitHubBuildPanelProps> = ({ config, onCl
       console.log('Owner:', githubConfig.owner);
       console.log('Repo:', githubConfig.repo);
       console.log('Workflow inputs:', workflowInputs);
+      console.log('=== Workflow Input Details ===');
+      console.log('executable_name:', workflowInputs.executable_name);
+      console.log('enable_portable:', workflowInputs.enable_portable);
+      console.log('include_installer:', workflowInputs.include_installer);
+      console.log('config.build.EXECUTABLE_NAME:', config.build?.EXECUTABLE_NAME);
+      console.log('config.build.ENABLE_PORTABLE_MODE:', config.build?.ENABLE_PORTABLE_MODE);
+      console.log('config.build.INCLUDE_INSTALLER:', config.build?.INCLUDE_INSTALLER);
 
       // Primero verificar si el workflow existe
       const workflowInfoUrl = `https://api.github.com/repos/${githubConfig.owner}/${githubConfig.repo}/actions/workflows/build-rustdesk-final.yml`;
