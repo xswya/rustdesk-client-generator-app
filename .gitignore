@@ -186,6 +186,7 @@ $RECYCLE.BIN/
 local.json
 dev.json
 test.json
+opencode.json
 
 # IDE files
 *.swp
