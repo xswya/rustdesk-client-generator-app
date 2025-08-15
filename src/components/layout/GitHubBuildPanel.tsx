@@ -111,8 +111,7 @@ export const GitHubBuildPanel: React.FC<GitHubBuildPanelProps> = ({ config, onCl
         rustdesk_branch: String(config.build?.RUSTDESK_BRANCH || 'master'),
         target_arch: String(config.build?.TARGET_ARCH || 'x86_64'),
         enable_portable: Boolean(config.build?.ENABLE_PORTABLE_MODE),
-        include_installer: Boolean(config.build?.INCLUDE_INSTALLER !== false),
-        create_installer: Boolean(config.build?.INCLUDE_INSTALLER !== false), // Alias for include_installer
+        create_installer: Boolean(config.build?.INCLUDE_INSTALLER !== false),
         enable_debug: Boolean(config.build?.ENABLE_DEBUG_MODE)
       };
 
@@ -140,7 +139,7 @@ export const GitHubBuildPanel: React.FC<GitHubBuildPanelProps> = ({ config, onCl
       console.log('=== Workflow Input Details ===');
       console.log('executable_name:', workflowInputs.executable_name);
       console.log('enable_portable:', workflowInputs.enable_portable);
-      console.log('include_installer:', workflowInputs.include_installer);
+      console.log('create_installer:', workflowInputs.create_installer);
       console.log('config.build.EXECUTABLE_NAME:', config.build?.EXECUTABLE_NAME);
       console.log('config.build.ENABLE_PORTABLE_MODE:', config.build?.ENABLE_PORTABLE_MODE);
       console.log('config.build.INCLUDE_INSTALLER:', config.build?.INCLUDE_INSTALLER);
