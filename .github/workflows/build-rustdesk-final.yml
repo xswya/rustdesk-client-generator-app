@@ -30,11 +30,6 @@ on:
         required: false
         type: boolean
         default: false
-      include_installer:
-        description: 'Include installer (alias for create_installer)'
-        required: false
-        type: boolean
-        default: true
       create_installer:
         description: 'Create installer'
         required: false
@@ -370,8 +365,8 @@ jobs:
           Write-Host "[SUCCESS] Copied executable to: $finalExe"
         }
         
-        # Create installer if requested (use include_installer if provided, otherwise fallback to create_installer)
-        $shouldCreateInstaller = if ("${{ inputs.include_installer }}" -ne "") { "${{ inputs.include_installer }}" } else { "${{ inputs.create_installer }}" }
+        # Create installer if requested
+        $shouldCreateInstaller = "${{ inputs.create_installer }}"
         if ($shouldCreateInstaller -eq "true") {
           Write-Host "Creating installer..."
           
