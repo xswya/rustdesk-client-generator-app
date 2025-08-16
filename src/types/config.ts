@@ -99,10 +99,6 @@ export const BuildConfigSchema = z.object({
   // Campos adicionales para compatibilidad
   description: z.string().optional(),
   repository_branch: z.string().default('master'),
-  rustdesk_arch: z.enum(['x86_64', 'aarch64']).default('x86_64'),
-  portable_mode: z.boolean().default(false),
-  debug_mode: z.boolean().default(false),
-  sign_executable: z.boolean().default(false),
   platform: z.enum(['windows-x64']).default('windows-x64'),
   artifacts: z.array(z.enum(['exe', 'msi'])).default(['exe']),
   publish_release: z.boolean().default(false),
@@ -199,10 +195,6 @@ export const defaultConfig: Config = {
     // Campos adicionales para compatibilidad
     description: '',
     repository_branch: 'master',
-    rustdesk_arch: 'x86_64' as const,
-    portable_mode: false,
-    debug_mode: false,
-    sign_executable: false,
     platform: 'windows-x64' as const,
     artifacts: ['exe'] as const,
     publish_release: false,
