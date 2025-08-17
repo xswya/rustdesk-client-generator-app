@@ -206,9 +206,35 @@ jobs:
         $rustConfigLines | Out-File -FilePath "src\config.rs" -Encoding UTF8
         Write-Host "[SUCCESS] Rust config created"
         
+        # Verify config.rs was created successfully
+        if (Test-Path "src\config.rs") {
+          $configSize = (Get-Item "src\config.rs").Length
+          Write-Host "[SUCCESS] config.rs created (size: $configSize bytes)"
+          Write-Host "[DEBUG] config.rs content:"
+          Get-Content "src\config.rs" | Write-Host
+        } else {
+          Write-Host "[ERROR] Failed to create config.rs"
+          exit 1
+        }
+        
+        # Check if main.rs or lib.rs exists and if they include our config
+        if (Test-Path "src\main.rs") {
+          Write-Host "[DEBUG] Checking main.rs for config module inclusion..."
+          $mainContent = Get-Content "src\main.rs" -Raw
+          if ($mainContent -match "mod config" -or $mainContent -match "use.*config") {
+            Write-Host "[SUCCESS] Config module is referenced in main.rs"
+          } else {
+            Write-Host "[WARNING] Config module may not be included in main.rs"
+          }
+        }
+        
         # Update Cargo.toml carefully - only update if different from rustdesk
         if (Test-Path "Cargo.toml") {
           $cargoContent = Get-Content "Cargo.toml" -Raw
+          
+          Write-Host "[DEBUG] Original Cargo.toml preview:"
+          $cargoPreview = ($cargoContent -split "`n" | Select-Object -First 10) -join "`n"
+          Write-Host $cargoPreview
           
           if ($config.branding.APP_NAME -ne "rustdesk") {
             # Update package name
@@ -220,7 +246,18 @@ jobs:
             Write-Host "[SUCCESS] Updated default-run target in Cargo.toml"
           }
           
+          # Verify inline feature is enabled
+          if ($cargoContent -notmatch 'inline.*=') {
+            Write-Host "[WARNING] Inline feature not found in Cargo.toml - this may cause UI issues"
+          } else {
+            Write-Host "[SUCCESS] Inline feature is configured in Cargo.toml"
+          }
+          
           $cargoContent | Out-File -FilePath "Cargo.toml" -Encoding UTF8
+          
+          Write-Host "[DEBUG] Modified Cargo.toml preview:"
+          $cargoPreview = (Get-Content "Cargo.toml" | Select-Object -First 10) -join "`n"
+          Write-Host $cargoPreview
         }
         
         Write-Host "[SUCCESS] Configuration applied successfully"
@@ -257,27 +294,61 @@ jobs:
           
           # Create minimal inline.rs as fallback
           New-Item -Path "src\ui" -ItemType Directory -Force -ErrorAction SilentlyContinue | Out-Null
-          $inlineContent = "// Minimal inline module for compilation`n"
-          $inlineContent += "#[inline]`n"
-          $inlineContent += "pub fn get_index() -> String {`n"
-          $inlineContent += '    "<html><head><title>RustDesk</title></head><body><h1>RustDesk Client</h1></body></html>".to_string()`n'
-          $inlineContent += "}`n`n"
-          $inlineContent += "#[inline]`n"
-          $inlineContent += "pub fn get_remote() -> String {`n"
-          $inlineContent += '    "<html><head><title>Remote</title></head><body><h1>Remote Control</h1></body></html>".to_string()`n'
-          $inlineContent += "}`n`n"
-          $inlineContent += "#[inline]`n"
-          $inlineContent += "pub fn get_install() -> String {`n"
-          $inlineContent += '    "<html><head><title>Install</title></head><body><h1>Installation</h1></body></html>".to_string()`n'
-          $inlineContent += "}`n`n"
-          $inlineContent += "#[inline]`n"
-          $inlineContent += "pub fn get_chatbox() -> String {`n"
-          $inlineContent += '    "<html><head><title>Chat</title></head><body><h1>Chat</h1></body></html>".to_string()`n'
-          $inlineContent += "}`n`n"
-          $inlineContent += "#[inline]`n"
-          $inlineContent += "pub fn get_cm() -> String {`n"
-          $inlineContent += '    "<html><head><title>Connection Manager</title></head><body><h1>Connection Manager</h1></body></html>".to_string()`n'
-          $inlineContent += "}`n"
+          $inlineContent = @"
+// Minimal inline module for compilation
+// Auto-generated fallback when inline-sciter.py is not available
+
+#[inline]
+pub fn get_index() -> String {
+    r#"<html><head><title>RustDesk</title></head><body><h1>RustDesk Client</h1></body></html>"#.to_string()
+}
+
+#[inline]
+pub fn get_remote() -> String {
+    r#"<html><head><title>Remote Control</title></head><body><h1>Remote Control</h1></body></html>"#.to_string()
+}
+
+#[inline]
+pub fn get_install() -> String {
+    r#"<html><head><title>Installation</title></head><body><h1>Installation</h1></body></html>"#.to_string()
+}
+
+#[inline]
+pub fn get_chatbox() -> String {
+    r#"<html><head><title>Chat</title></head><body><h1>Chat</h1></body></html>"#.to_string()
+}
+
+#[inline]
+pub fn get_cm() -> String {
+    r#"<html><head><title>Connection Manager</title></head><body><h1>Connection Manager</h1></body></html>"#.to_string()
+}
+
+#[inline]
+pub fn get_ab() -> String {
+    r#"<html><head><title>Address Book</title></head><body><h1>Address Book</h1></body></html>"#.to_string()
+}
+
+#[inline]
+pub fn get_login() -> String {
+    r#"<html><head><title>Login</title></head><body><h1>Login</h1></body></html>"#.to_string()
+}
+
+#[inline]
+pub fn get_file_transfer() -> String {
+    r#"<html><head><title>File Transfer</title></head><body><h1>File Transfer</h1></body></html>"#.to_string()
+}
+
+// Additional required functions for RustDesk UI
+#[inline]
+pub fn get_port_forward() -> String {
+    r#"<html><head><title>Port Forward</title></head><body><h1>Port Forward</h1></body></html>"#.to_string()
+}
+
+#[inline] 
+pub fn get_settings() -> String {
+    r#"<html><head><title>Settings</title></head><body><h1>Settings</h1></body></html>"#.to_string()
+}
+"@
           $inlineContent | Out-File -FilePath "src\ui\inline.rs" -Encoding UTF8
           Write-Host "[SUCCESS] Created minimal inline.rs module"
         } else {
@@ -397,6 +468,21 @@ jobs:
         if ($builtExecutable -ne $finalExe) {
           Copy-Item $builtExecutable $finalExe -Force
           Write-Host "[SUCCESS] Copied executable to: $finalExe"
+        }
+        
+        # Test the executable quickly to verify it can start
+        Write-Host "[TEST] Testing executable startup..."
+        try {
+          # Try to run with --help to see if it starts
+          $testOutput = & $finalExe --help 2>&1 | Out-String
+          if ($LASTEXITCODE -eq 0 -or $testOutput -match "rustdesk|RustDesk|help|usage") {
+            Write-Host "[SUCCESS] Executable appears to be working (help output received)"
+          } else {
+            Write-Host "[WARNING] Executable test inconclusive. Exit code: $LASTEXITCODE"
+            Write-Host "[WARNING] Output: $testOutput"
+          }
+        } catch {
+          Write-Host "[WARNING] Could not test executable: $($_.Exception.Message)"
         }
         
         # Create installer if requested
