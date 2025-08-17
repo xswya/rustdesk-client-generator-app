@@ -154,10 +154,44 @@ jobs:
         # Parse configuration
         try {
           $config = '${{ inputs.config_json }}' | ConvertFrom-Json
+          
+          Write-Host "[DEBUG] Configuration parsed successfully"
+          Write-Host "[DEBUG] Server section:"
+          Write-Host "  RENDEZVOUS_SERVER: '$($config.server.RENDEZVOUS_SERVER)'"
+          Write-Host "  RELAY_SERVER: '$($config.server.RELAY_SERVER)'"
+          Write-Host "  RS_PUB_KEY: '$($config.server.RS_PUB_KEY)'"
+          Write-Host "  API_SERVER: '$($config.server.API_SERVER)'"
+          Write-Host "[DEBUG] Branding section:"
+          Write-Host "  APP_NAME: '$($config.branding.APP_NAME)'"
+          Write-Host "  PRODUCT_NAME: '$($config.branding.PRODUCT_NAME)'"
+          
         } catch {
           Write-Host "[ERROR] Failed to parse configuration JSON: $($_.Exception.Message)"
           exit 1
         }
+        
+        # Validate minimum required configuration
+        if (-not $config.server.RENDEZVOUS_SERVER) {
+          Write-Host "[ERROR] RENDEZVOUS_SERVER is required but not provided"
+          exit 1
+        }
+        
+        if (-not $config.server.RS_PUB_KEY) {
+          Write-Host "[ERROR] RS_PUB_KEY is required but not provided"
+          exit 1
+        }
+        
+        if (-not $config.branding.APP_NAME) {
+          Write-Host "[WARNING] APP_NAME not provided, using default 'rustdesk'"
+          $config.branding.APP_NAME = "rustdesk"
+        }
+        
+        if (-not $config.branding.PRODUCT_NAME) {
+          Write-Host "[WARNING] PRODUCT_NAME not provided, using APP_NAME"
+          $config.branding.PRODUCT_NAME = $config.branding.APP_NAME
+        }
+        
+        Write-Host "[SUCCESS] Configuration validation passed"
         
         # Create simple Rust config file using separate lines
         $rustConfigLines = @()
@@ -165,7 +199,7 @@ jobs:
         $rustConfigLines += "pub const RENDEZVOUS_SERVER: &str = `"$($config.server.RENDEZVOUS_SERVER)`";"
         $rustConfigLines += "pub const RELAY_SERVER: &str = `"$($config.server.RELAY_SERVER)`";"
         $rustConfigLines += "pub const API_SERVER: &str = `"$($config.server.API_SERVER)`";"
-        $rustConfigLines += "pub const KEY: &str = `"$($config.server.KEY)`";"
+        $rustConfigLines += "pub const KEY: &str = `"$($config.server.RS_PUB_KEY)`";"
         $rustConfigLines += "pub const PRODUCT_NAME: &str = `"$($config.branding.PRODUCT_NAME)`";"
         $rustConfigLines += "pub const APP_NAME: &str = `"$($config.branding.APP_NAME)`";"
         
