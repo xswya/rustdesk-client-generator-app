@@ -1,4 +1,4 @@
-name: Build RustDesk Client (Final v2.1)
+name: Build RustDesk Client (Final v3)
 
 on:
   workflow_dispatch:
@@ -127,12 +127,6 @@ jobs:
         
         if ($LASTEXITCODE -ne 0) {
           Write-Host "[ERROR] vcpkg install failed with exit code: $LASTEXITCODE"
-          Write-Host "=== Checking for error logs ==="
-          Get-ChildItem "$env:VCPKG_ROOT" -Filter "*.log" -Recurse | ForEach-Object {
-            Write-Host "=== $($_.FullName) ==="
-            Get-Content $_.FullName | Write-Host
-            Write-Host "========================"
-          }
           exit 1
         }
         
@@ -156,14 +150,10 @@ jobs:
           $config = '${{ inputs.config_json }}' | ConvertFrom-Json
           
           Write-Host "[DEBUG] Configuration parsed successfully"
-          Write-Host "[DEBUG] Server section:"
-          Write-Host "  RENDEZVOUS_SERVER: '$($config.server.RENDEZVOUS_SERVER)'"
-          Write-Host "  RELAY_SERVER: '$($config.server.RELAY_SERVER)'"
-          Write-Host "  RS_PUB_KEY: '$($config.server.RS_PUB_KEY)'"
-          Write-Host "  API_SERVER: '$($config.server.API_SERVER)'"
-          Write-Host "[DEBUG] Branding section:"
-          Write-Host "  APP_NAME: '$($config.branding.APP_NAME)'"
-          Write-Host "  PRODUCT_NAME: '$($config.branding.PRODUCT_NAME)'"
+          Write-Host "[DEBUG] Server RENDEZVOUS_SERVER: '$($config.server.RENDEZVOUS_SERVER)'"
+          Write-Host "[DEBUG] Server RS_PUB_KEY: '$($config.server.RS_PUB_KEY)'"
+          Write-Host "[DEBUG] Branding APP_NAME: '$($config.branding.APP_NAME)'"
+          Write-Host "[DEBUG] Branding PRODUCT_NAME: '$($config.branding.PRODUCT_NAME)'"
           
         } catch {
           Write-Host "[ERROR] Failed to parse configuration JSON: $($_.Exception.Message)"
@@ -217,24 +207,9 @@ jobs:
           exit 1
         }
         
-        # Check if main.rs or lib.rs exists and if they include our config
-        if (Test-Path "src\main.rs") {
-          Write-Host "[DEBUG] Checking main.rs for config module inclusion..."
-          $mainContent = Get-Content "src\main.rs" -Raw
-          if ($mainContent -match "mod config" -or $mainContent -match "use.*config") {
-            Write-Host "[SUCCESS] Config module is referenced in main.rs"
-          } else {
-            Write-Host "[WARNING] Config module may not be included in main.rs"
-          }
-        }
-        
         # Update Cargo.toml carefully - only update if different from rustdesk
         if (Test-Path "Cargo.toml") {
           $cargoContent = Get-Content "Cargo.toml" -Raw
-          
-          Write-Host "[DEBUG] Original Cargo.toml preview:"
-          $cargoPreview = ($cargoContent -split "`n" | Select-Object -First 10) -join "`n"
-          Write-Host $cargoPreview
           
           if ($config.branding.APP_NAME -ne "rustdesk") {
             # Update package name
@@ -246,18 +221,7 @@ jobs:
             Write-Host "[SUCCESS] Updated default-run target in Cargo.toml"
           }
           
-          # Verify inline feature is enabled
-          if ($cargoContent -notmatch 'inline.*=') {
-            Write-Host "[WARNING] Inline feature not found in Cargo.toml - this may cause UI issues"
-          } else {
-            Write-Host "[SUCCESS] Inline feature is configured in Cargo.toml"
-          }
-          
           $cargoContent | Out-File -FilePath "Cargo.toml" -Encoding UTF8
-          
-          Write-Host "[DEBUG] Modified Cargo.toml preview:"
-          $cargoPreview = (Get-Content "Cargo.toml" | Select-Object -First 10) -join "`n"
-          Write-Host $cargoPreview
         }
         
         Write-Host "[SUCCESS] Configuration applied successfully"
@@ -269,35 +233,10 @@ jobs:
         
         cd "$env:GITHUB_WORKSPACE\rustdesk"
         
-        # Check if Python3 is available
-        try {
-          $pythonVersion = python3 --version
-          Write-Host "Python version: $pythonVersion"
-        } catch {
-          Write-Host "Python3 not found, trying python..."
-          try {
-            $pythonVersion = python --version
-            Write-Host "Python version: $pythonVersion"
-          } catch {
-            Write-Host "[ERROR] Python not found. Installing Python..."
-            choco install python -y
-            refreshenv
-          }
-        }
-        
-        # Check if the inline script exists
-        if (-not (Test-Path "res\inline-sciter.py")) {
-          Write-Host "[ERROR] inline-sciter.py script not found in res/ directory"
-          Write-Host "Available files in res/ directory:"
-          Get-ChildItem "res" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "  $($_.Name)" }
-          Write-Host "Creating a minimal inline.rs module as fallback..."
-          
-          # Create minimal inline.rs as fallback
-          New-Item -Path "src\ui" -ItemType Directory -Force -ErrorAction SilentlyContinue | Out-Null
-          $inlineContent = @"
+        # Create minimal inline.rs as fallback
+        New-Item -Path "src\ui" -ItemType Directory -Force -ErrorAction SilentlyContinue | Out-Null
+        $inlineContent = @"
 // Minimal inline module for compilation
-// Auto-generated fallback when inline-sciter.py is not available
-
 #[inline]
 pub fn get_index() -> String {
     r#"<html><head><title>RustDesk</title></head><body><h1>RustDesk Client</h1></body></html>"#.to_string()
@@ -322,50 +261,9 @@ pub fn get_chatbox() -> String {
 pub fn get_cm() -> String {
     r#"<html><head><title>Connection Manager</title></head><body><h1>Connection Manager</h1></body></html>"#.to_string()
 }
-
-#[inline]
-pub fn get_ab() -> String {
-    r#"<html><head><title>Address Book</title></head><body><h1>Address Book</h1></body></html>"#.to_string()
-}
-
-#[inline]
-pub fn get_login() -> String {
-    r#"<html><head><title>Login</title></head><body><h1>Login</h1></body></html>"#.to_string()
-}
-
-#[inline]
-pub fn get_file_transfer() -> String {
-    r#"<html><head><title>File Transfer</title></head><body><h1>File Transfer</h1></body></html>"#.to_string()
-}
-
-// Additional required functions for RustDesk UI
-#[inline]
-pub fn get_port_forward() -> String {
-    r#"<html><head><title>Port Forward</title></head><body><h1>Port Forward</h1></body></html>"#.to_string()
-}
-
-#[inline] 
-pub fn get_settings() -> String {
-    r#"<html><head><title>Settings</title></head><body><h1>Settings</h1></body></html>"#.to_string()
-}
 "@
-          $inlineContent | Out-File -FilePath "src\ui\inline.rs" -Encoding UTF8
-          Write-Host "[SUCCESS] Created minimal inline.rs module"
-        } else {
-          Write-Host "Running inline-sciter.py script..."
-          if (Get-Command python3 -ErrorAction SilentlyContinue) {
-            python3 res\inline-sciter.py
-          } else {
-            python res\inline-sciter.py
-          }
-          
-          if ($LASTEXITCODE -ne 0) {
-            Write-Host "[ERROR] Failed to generate inline module"
-            exit 1
-          }
-          
-          Write-Host "[SUCCESS] Generated inline UI module"
-        }
+        $inlineContent | Out-File -FilePath "src\ui\inline.rs" -Encoding UTF8
+        Write-Host "[SUCCESS] Created minimal inline.rs module"
         
         # Verify that inline.rs was created
         if (Test-Path "src\ui\inline.rs") {
@@ -394,15 +292,9 @@ pub fn get_settings() -> String {
         Write-Host "Starting Cargo build..."
         if ("${{ inputs.enable_debug }}" -eq "true") {
           Write-Host "Build mode: Debug"
-        } else {
-          Write-Host "Build mode: Release"
-        }
-        
-        if ("${{ inputs.enable_debug }}" -eq "true") {
-          Write-Host "[DEBUG] Building in debug mode..."
           cargo build --features inline --verbose
         } else {
-          Write-Host "[RELEASE] Building in release mode..."
+          Write-Host "Build mode: Release"
           cargo build --release --features inline --verbose
         }
         
@@ -486,8 +378,7 @@ pub fn get_settings() -> String {
         }
         
         # Create installer if requested
-        $shouldCreateInstaller = "${{ inputs.create_installer }}"
-        if ($shouldCreateInstaller -eq "true") {
+        if ("${{ inputs.create_installer }}" -eq "true") {
           Write-Host "Creating installer..."
           
           # Create installer script file
