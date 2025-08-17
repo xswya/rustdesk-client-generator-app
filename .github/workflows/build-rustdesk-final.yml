@@ -191,7 +191,7 @@ jobs:
           $config.branding.PRODUCT_NAME = $config.branding.APP_NAME
         }
         
-        Write-Host "[SUCCESS] Configuration validation passed"
+        Write-Host "[SUCCESS] Configuration validation passed - ready for build"
         
         # Create simple Rust config file using separate lines
         $rustConfigLines = @()
