@@ -29,14 +29,14 @@ export const GitHubBuildPanel: React.FC<GitHubBuildPanelProps> = ({ config, onCl
     if (!githubConfig.owner || !githubConfig.repo || !githubConfig.token) {
       setBuildStatus({
         status: 'error',
-        message: 'Por favor completa todos los campos de configuración de GitHub'
+        message: '请完成所有GitHub配置字段'
       });
       return;
     }
 
     setBuildStatus({
       status: 'configuring',
-      message: 'Validando repositorio de GitHub...'
+      message: '验证GitHub仓库...'
     });
 
     try {
@@ -53,17 +53,17 @@ export const GitHubBuildPanel: React.FC<GitHubBuildPanelProps> = ({ config, onCl
         if (response.status === 404) {
           setBuildStatus({
             status: 'error',
-            message: `El repositorio ${githubConfig.owner}/${githubConfig.repo} no existe o no tienes acceso a él`
+            message: `仓库 ${githubConfig.owner}/${githubConfig.repo} 不存在或你没有访问权限`
           });
         } else if (response.status === 401) {
           setBuildStatus({
             status: 'error',
-            message: 'Token de GitHub inválido o sin permisos suficientes'
+            message: 'GitHub令牌无效或权限不足'
           });
         } else {
           setBuildStatus({
             status: 'error',
-            message: `Error al acceder al repositorio: ${response.status} ${response.statusText}`
+            message: `访问仓库时出错: ${response.status} ${response.statusText}`
           });
         }
         return;
@@ -72,7 +72,7 @@ export const GitHubBuildPanel: React.FC<GitHubBuildPanelProps> = ({ config, onCl
       // Ejecutar el workflow de GitHub Actions
       setBuildStatus({
         status: 'building',
-        message: 'Iniciando workflow de GitHub Actions...'
+        message: '启动GitHub Actions工作流...'
       });
 
       // Crear el objeto config completo incluyendo la sección build
@@ -118,17 +118,17 @@ export const GitHubBuildPanel: React.FC<GitHubBuildPanelProps> = ({ config, onCl
       // Validate required inputs
       if (!workflowInputs.config_json || workflowInputs.config_json === '{}') {
         setBuildStatus({
-          status: 'error',
-          message: 'Error: Configuración vacía. Complete al menos la configuración del servidor.'
-        });
+            status: 'error',
+            message: '错误: 配置为空。至少完成服务器配置。'
+          });
         return;
       }
 
       if (!workflowInputs.executable_name || workflowInputs.executable_name.length < 3) {
         setBuildStatus({
-          status: 'error',
-          message: 'Error: Nombre del ejecutable requerido (mínimo 3 caracteres).'
-        });
+            status: 'error',
+            message: '错误: 需指定可执行文件名（至少3个字符）。'
+          });
         return;
       }
 
@@ -165,7 +165,7 @@ export const GitHubBuildPanel: React.FC<GitHubBuildPanelProps> = ({ config, onCl
           console.error('Workflow not found or accessible:', workflowInfoResponse.status, errorText);
           setBuildStatus({
             status: 'error',
-            message: `Workflow no encontrado (${workflowInfoResponse.status}): ${errorText}`
+            message: `找不到工作流 (${workflowInfoResponse.status}): ${errorText}`
           });
           return;
         }
@@ -221,13 +221,13 @@ export const GitHubBuildPanel: React.FC<GitHubBuildPanelProps> = ({ config, onCl
             
             // Specific error messages for common issues
             if (errorMessage.includes('Repository access blocked')) {
-              errorMessage = 'Token no tiene permisos para ejecutar workflows. Verifica los scopes del token.';
+              errorMessage = '令牌没有执行工作流的权限。请检查令牌的作用域。';
             } else if (errorMessage.includes('Bad credentials')) {
-              errorMessage = 'Token de GitHub inválido. Verifica el token en configuración.';
+              errorMessage = 'GitHub令牌无效。请检查配置中的令牌。';
             } else if (errorMessage.includes('Not Found')) {
-              errorMessage = 'Workflow no encontrado. Verifica que el archivo workflow existe en el repositorio.';
+              errorMessage = '找不到工作流。请确认工作流文件存在于仓库中。';
             } else if (errorMessage.includes('workflow_dispatch')) {
-              errorMessage = 'El workflow no está configurado para dispatch manual. Revisa el trigger.';
+              errorMessage = '工作流未配置为手动触发。请检查触发器设置。';
             }
           }
         } catch (e) {
@@ -236,7 +236,7 @@ export const GitHubBuildPanel: React.FC<GitHubBuildPanelProps> = ({ config, onCl
         
         setBuildStatus({
           status: 'error',
-          message: `Error al ejecutar el workflow (${workflowResponse.status}): ${errorMessage}`
+          message: `执行工作流时出错 (${workflowResponse.status}): ${errorMessage}`
         });
         return;
       }
@@ -244,7 +244,7 @@ export const GitHubBuildPanel: React.FC<GitHubBuildPanelProps> = ({ config, onCl
       // Workflow iniciado exitosamente
       setBuildStatus({
         status: 'building',
-        message: 'Workflow iniciado exitosamente. Compilando cliente RustDesk...',
+        message: '工作流已成功启动。正在编译RustDesk客户端...',
         workflowUrl: `https://github.com/${githubConfig.owner}/${githubConfig.repo}/actions/workflows/build-rustdesk-final.yml`
       });
 
@@ -268,21 +268,21 @@ export const GitHubBuildPanel: React.FC<GitHubBuildPanelProps> = ({ config, onCl
                 if (latestRun.conclusion === 'success') {
                   setBuildStatus({
                     status: 'success',
-                    message: '¡Compilación completada exitosamente!',
+                    message: '编译已成功完成！',
                     workflowUrl: latestRun.html_url,
                     downloadUrl: `https://github.com/${githubConfig.owner}/${githubConfig.repo}/actions/runs/${latestRun.id}/artifacts`
                   });
                 } else {
                   setBuildStatus({
                     status: 'error',
-                    message: `Compilación falló: ${latestRun.conclusion}`,
+                    message: `编译失败: ${latestRun.conclusion}`,
                     workflowUrl: latestRun.html_url
                   });
                 }
               } else if (latestRun.status === 'in_progress') {
                 setBuildStatus({
                   status: 'building',
-                  message: 'Compilación en progreso...',
+                  message: '编译进行中...',
                   workflowUrl: latestRun.html_url
                 });
                 // Continuar monitoreando
@@ -300,9 +300,9 @@ export const GitHubBuildPanel: React.FC<GitHubBuildPanelProps> = ({ config, onCl
 
     } catch (error) {
       setBuildStatus({
-        status: 'error',
-        message: 'Error de conexión: ' + (error as Error).message
-      });
+          status: 'error',
+          message: '连接错误: ' + (error as Error).message
+        });
     }
   };
 
@@ -359,12 +359,12 @@ export const GitHubBuildPanel: React.FC<GitHubBuildPanelProps> = ({ config, onCl
           {/* Configuración de GitHub */}
           <div className="mb-6">
             <h3 className="text-lg font-medium text-gray-900 mb-4">
-              Configuración del Repositorio
+              仓库配置
             </h3>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Usuario/Organización de GitHub
+                  GitHub用户名/组织
                 </label>
                 <input
                   type="text"
@@ -376,7 +376,7 @@ export const GitHubBuildPanel: React.FC<GitHubBuildPanelProps> = ({ config, onCl
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Nombre del Repositorio
+                  仓库名称
                 </label>
                 <input
                   type="text"
@@ -388,7 +388,7 @@ export const GitHubBuildPanel: React.FC<GitHubBuildPanelProps> = ({ config, onCl
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Token de GitHub (Personal Access Token)
+                  GitHub令牌 (个人访问令牌)
                 </label>
                 <input
                   type="password"
@@ -422,7 +422,7 @@ export const GitHubBuildPanel: React.FC<GitHubBuildPanelProps> = ({ config, onCl
                   className="inline-flex items-center space-x-1 text-blue-600 hover:text-blue-800 text-sm"
                 >
                   <ExternalLink className="h-4 w-4" />
-                  <span>Ver progreso en GitHub</span>
+                  <span>在GitHub上查看进度</span>
                 </a>
               )}
             </div>
@@ -431,7 +431,7 @@ export const GitHubBuildPanel: React.FC<GitHubBuildPanelProps> = ({ config, onCl
           {/* Resumen de Configuración */}
           <div className="mb-6">
             <h3 className="text-lg font-medium text-gray-900 mb-4">
-              Resumen del Build
+              构建摘要
             </h3>
             <div className="bg-gray-50 rounded-lg p-4 space-y-2">
               <div className="flex justify-between">
@@ -452,12 +452,12 @@ export const GitHubBuildPanel: React.FC<GitHubBuildPanelProps> = ({ config, onCl
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Modo portable:</span>
-                <span className="font-medium">Sí</span>
+                <span className="font-medium">是</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Incluir instalador:</span>
-                <span className="font-medium">Sí</span>
-              </div>
+                  <span className="text-gray-600">包含安装器:</span>
+                  <span className="font-medium">是</span>
+                </div>
             </div>
           </div>
 
@@ -471,7 +471,7 @@ export const GitHubBuildPanel: React.FC<GitHubBuildPanelProps> = ({ config, onCl
                 className="flex-1 bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors flex items-center justify-center space-x-2"
               >
                 <Download className="h-4 w-4" />
-                <span>Descargar Ejecutable</span>
+                <span>下载可执行文件</span>
               </a>
             ) : (
               <button
@@ -487,7 +487,7 @@ export const GitHubBuildPanel: React.FC<GitHubBuildPanelProps> = ({ config, onCl
                 ) : (
                   <>
                     <Github className="h-4 w-4" />
-                    <span>Iniciar Compilación</span>
+                    <span>开始编译</span>
                   </>
                 )}
               </button>
@@ -503,19 +503,19 @@ export const GitHubBuildPanel: React.FC<GitHubBuildPanelProps> = ({ config, onCl
 
           {/* Instrucciones */}
           <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-            <h4 className="font-medium text-blue-900 mb-2">📋 Instrucciones:</h4>
+            <h4 className="font-medium text-blue-900 mb-2">📋 说明：</h4>
             <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
-              <li>Asegúrate de que este proyecto esté subido a GitHub</li>
-              <li>Crea un Personal Access Token en GitHub con permisos "actions" y "repo"</li>
-              <li>Completa la configuración del repositorio arriba</li>
-              <li>Haz clic en "Iniciar Compilación" para ejecutar el workflow</li>
-              <li>El proceso tomará 15-30 minutos aproximadamente</li>
-              <li>Una vez completado, podrás descargar el ejecutable desde GitHub</li>
+              <li>确保此项目已上传到GitHub</li>
+              <li>在GitHub上创建一个具有"actions"和"repo"权限的个人访问令牌</li>
+              <li>完成上方的仓库配置</li>
+              <li>点击"开始编译"执行工作流</li>
+              <li>该过程大约需要15-30分钟</li>
+              <li>完成后，你可以从GitHub下载可执行文件</li>
             </ol>
             <div className="mt-3 p-3 bg-blue-100 rounded">
               <p className="text-xs text-blue-700">
-                <strong>Nota:</strong> El workflow compilará automáticamente el cliente RustDesk con tu configuración personalizada. 
-                Se generará tanto el ejecutable portable como un instalador.
+                <strong>注意：</strong> 工作流将自动编译具有你自定义配置的RustDesk客户端。
+                将同时生成便携式可执行文件和安装程序。
               </p>
             </div>
           </div>

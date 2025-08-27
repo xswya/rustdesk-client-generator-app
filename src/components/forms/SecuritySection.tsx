@@ -20,9 +20,9 @@ export const SecuritySection: React.FC<SecuritySectionProps> = ({ form }) => {
           <Shield className="h-4 w-4" />
         </div>
         <div>
-          <h2 className="form-section-title">Configuración de Seguridad</h2>
+          <h2 className="form-section-title">安全配置</h2>
           <p className="form-section-description">
-            Configura las opciones de seguridad y acceso del cliente
+            配置客户端的安全和访问选项
           </p>
         </div>
       </div>
@@ -32,17 +32,17 @@ export const SecuritySection: React.FC<SecuritySectionProps> = ({ form }) => {
           <div>
             <div className="flex items-center gap-2 mb-2">
               <label className="text-sm font-medium text-secondary-900">
-                Contraseña Fija (Opcional)
+                固定密码 (可选)
               </label>
-              <Tooltip content="Contraseña predefinida para conexiones.&#10;Si se establece, el cliente usará esta contraseña automáticamente.&#10;&#10;Útil para despliegues masivos donde se quiere una contraseña común." />
+              <Tooltip content="连接的预定义密码。&#10;如果设置，客户端将自动使用此密码。&#10;&#10;适用于需要统一密码的大规模部署。" />
             </div>
             <div className="relative">
               <Input
                 {...register('security.PRESET_PASSWORD')}
                 type={showPassword ? 'text' : 'password'}
-                placeholder="Contraseña predefinida"
+                placeholder="预定义密码"
                 error={errors.security?.PRESET_PASSWORD?.message}
-                helperText="Contraseña que se aplicará automáticamente"
+                helperText="将自动应用的密码"
               />
               <button
                 type="button"
@@ -57,15 +57,15 @@ export const SecuritySection: React.FC<SecuritySectionProps> = ({ form }) => {
           <div>
             <div className="flex items-center gap-2 mb-2">
               <label className="text-sm font-medium text-secondary-900">
-                Clave de Acceso (Opcional)
+                访问密钥 (可选)
               </label>
-              <Tooltip content="Clave de acceso permanente para conexiones.&#10;Permite conexiones sin contraseña temporal.&#10;&#10;Formato: cadena alfanumérica de al menos 6 caracteres." />
+              <Tooltip content="永久连接访问密钥。&#10;允许无需临时密码进行连接。&#10;&#10;格式：至少6个字符的字母数字字符串。" />
             </div>
             <Input
               {...register('security.ACCESS_KEY')}
-              placeholder="Clave de acceso permanente"
+              placeholder="永久访问密钥"
               error={errors.security?.ACCESS_KEY?.message}
-              helperText="Clave alfanumérica para acceso directo"
+              helperText="字母数字密钥，用于直接访问"
             />
           </div>
         </div>
@@ -73,7 +73,7 @@ export const SecuritySection: React.FC<SecuritySectionProps> = ({ form }) => {
         <div className="space-y-4">
           <h3 className="text-lg font-semibold text-secondary-900 flex items-center gap-2">
             <Lock className="h-5 w-5" />
-            Opciones de Seguridad
+            安全选项
           </h3>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -86,12 +86,12 @@ export const SecuritySection: React.FC<SecuritySectionProps> = ({ form }) => {
               <div className="flex-1">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium text-secondary-900">
-                    Remover Fondo de Pantalla
-                  </span>
-                  <Tooltip content="Remueve automáticamente el fondo de pantalla durante conexiones remotas.&#10;Mejora el rendimiento en conexiones lentas." />
+                      移除桌面背景
+                    </span>
+                    <Tooltip content="在远程连接期间自动移除桌面背景。&#10;在慢速连接中提高性能。" />
                 </div>
                 <p className="text-xs text-secondary-600">
-                  Mejora el rendimiento en conexiones lentas
+                  在慢速连接中提高性能
                 </p>
               </div>
             </label>
@@ -105,12 +105,12 @@ export const SecuritySection: React.FC<SecuritySectionProps> = ({ form }) => {
               <div className="flex-1">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium text-secondary-900">
-                    Bloquear Entrada Local
+                    锁定本地输入
                   </span>
-                  <Tooltip content="Bloquea el teclado y mouse local durante conexiones remotas.&#10;Previene interferencias del usuario local." />
+                  <Tooltip content="在远程连接期间锁定本地键盘和鼠标。&#10;防止本地用户干扰。" />
                 </div>
                 <p className="text-xs text-secondary-600">
-                  Previene interferencias durante control remoto
+                  防止远程控制期间的干扰
                 </p>
               </div>
             </label>
@@ -124,12 +124,12 @@ export const SecuritySection: React.FC<SecuritySectionProps> = ({ form }) => {
               <div className="flex-1">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium text-secondary-900">
-                    Modo Privacidad
+                    隐私模式
                   </span>
-                  <Tooltip content="Oculta la pantalla local durante conexiones remotas.&#10;Solo el usuario remoto puede ver la pantalla." />
+                  <Tooltip content="在远程连接期间隐藏本地屏幕。&#10;只有远程用户可以看到屏幕。" />
                 </div>
                 <p className="text-xs text-secondary-600">
-                  Oculta la pantalla del usuario local
+                  隐藏本地用户的屏幕
                 </p>
               </div>
             </label>
@@ -143,12 +143,12 @@ export const SecuritySection: React.FC<SecuritySectionProps> = ({ form }) => {
               <div className="flex-1">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium text-secondary-900">
-                    Grabar Sesiones
+                    录制会话
                   </span>
-                  <Tooltip content="Graba automáticamente todas las sesiones remotas.&#10;Útil para auditoría y cumplimiento." />
+                  <Tooltip content="自动录制所有远程会话。&#10;适用于审计和合规性。" />
                 </div>
                 <p className="text-xs text-secondary-600">
-                  Graba automáticamente las conexiones
+                  自动录制连接
                 </p>
               </div>
             </label>

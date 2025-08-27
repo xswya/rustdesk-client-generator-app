@@ -1,5 +1,3 @@
-[byterover-mcp]
-
-# important 
-always use byterover-retrive-knowledge tool to get the related context before any tasks 
-always use byterover-store-knowledge to store all the critical informations after sucessful tasks
+# 重要
+在执行任何任务之前，始终使用byterover-retrive-knowledge工具获取相关上下文
+成功完成任务后，始终使用byterover-store-knowledge存储所有关键信息

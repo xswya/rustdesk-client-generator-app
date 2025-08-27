@@ -19,9 +19,9 @@ export const BuildSection: React.FC<BuildSectionProps> = ({ form }) => {
           <Package className="h-4 w-4" />
         </div>
         <div>
-          <h2 className="form-section-title">Configuración de Build</h2>
+          <h2 className="form-section-title">构建配置</h2>
           <p className="form-section-description">
-            Configura los parámetros de compilación y distribución
+            配置编译和分发参数
           </p>
         </div>
       </div>
@@ -31,30 +31,30 @@ export const BuildSection: React.FC<BuildSectionProps> = ({ form }) => {
           <div>
             <div className="flex items-center gap-2 mb-2">
               <label className="text-sm font-medium text-secondary-900">
-                Nombre del Ejecutable *
-              </label>
-              <Tooltip content="Nombre del archivo ejecutable final.&#10;No incluir la extensión .exe&#10;&#10;Ejemplo: mi-empresa-remote" />
+                  可执行文件名 *
+                </label>
+                <Tooltip content="最终可执行文件的名称。&#10;请勿包含.exe扩展名&#10;&#10;示例：我的公司远程" />
             </div>
             <Input
               {...register('build.EXECUTABLE_NAME')}
               placeholder="mi-empresa-remote"
               error={errors.build?.EXECUTABLE_NAME?.message}
-              helperText="Nombre sin extensión (.exe se añade automáticamente)"
+              helperText="无扩展名的名称（.exe会自动添加）"
             />
           </div>
 
           <div>
             <div className="flex items-center gap-2 mb-2">
               <label className="text-sm font-medium text-secondary-900">
-                Versión del Cliente *
-              </label>
-              <Tooltip content="Versión del cliente personalizado.&#10;Formato recomendado: MAJOR.MINOR.PATCH&#10;&#10;Ejemplo: 1.0.0, 2.1.3" />
+                  客户端版本 *
+                </label>
+                <Tooltip content="自定义客户端版本。&#10;推荐格式：MAJOR.MINOR.PATCH&#10;&#10;示例：1.0.0, 2.1.3" />
             </div>
             <Input
               {...register('build.VERSION')}
               placeholder="1.0.0"
               error={errors.build?.VERSION?.message}
-              helperText="Formato: MAJOR.MINOR.PATCH"
+              helperText="格式：MAJOR.MINOR.PATCH"
             />
           </div>
         </div>
@@ -62,31 +62,31 @@ export const BuildSection: React.FC<BuildSectionProps> = ({ form }) => {
         <div>
           <div className="flex items-center gap-2 mb-2">
             <label className="text-sm font-medium text-secondary-900">
-              Descripción del Build
-            </label>
-            <Tooltip content="Descripción del build personalizado.&#10;Aparece en las propiedades del archivo ejecutable.&#10;&#10;Ejemplo: 'Cliente RustDesk personalizado para Mi Empresa'" />
+                  构建描述
+                </label>
+                <Tooltip content="自定义构建描述。&#10;显示在可执行文件的属性中。&#10;&#10;示例：'为我的公司定制的RustDesk客户端'" />
           </div>
           <Input
             {...register('build.BUILD_DESCRIPTION')}
             placeholder="Cliente RustDesk personalizado para Mi Empresa"
             error={errors.build?.BUILD_DESCRIPTION?.message}
-            helperText="Descripción que aparece en las propiedades del archivo"
+            helperText="显示在文件属性中的描述"
           />
         </div>
 
         <div className="space-y-4">
           <h3 className="text-lg font-semibold text-secondary-900 flex items-center gap-2">
             <GitBranch className="h-5 w-5" />
-            Configuración de Repositorio
+            仓库配置
           </h3>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <label className="text-sm font-medium text-secondary-900">
-                  Rama de RustDesk
+                  RustDesk分支
                 </label>
-                <Tooltip content="Rama del repositorio RustDesk a usar para el build.&#10;&#10;Opciones comunes:&#10;• master: Última versión estable&#10;• dev: Versión en desarrollo&#10;• v1.2.3: Tag específico" />
+                <Tooltip content="用于构建的RustDesk仓库分支。&#10;&#10;常用选项：&#10;• master: 最新稳定版本&#10;• dev: 开发版本&#10;• v1.2.3: 特定标签" />
               </div>
               <select
                 {...register('build.RUSTDESK_BRANCH')}
@@ -102,16 +102,16 @@ export const BuildSection: React.FC<BuildSectionProps> = ({ form }) => {
                 <p className="mt-1 text-sm text-red-600">{errors.build.RUSTDESK_BRANCH.message}</p>
               )}
               <p className="mt-1 text-xs text-secondary-500">
-                Rama o tag del repositorio RustDesk
+                RustDesk仓库的分支或标签
               </p>
             </div>
 
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <label className="text-sm font-medium text-secondary-900">
-                  Arquitectura de Build
+                  构建架构
                 </label>
-                <Tooltip content="Arquitectura del procesador para el build.&#10;&#10;• x86_64: 64-bit (recomendado)&#10;• x86: 32-bit (legacy)&#10;• aarch64: ARM 64-bit" />
+                <Tooltip content="构建的处理器架构。&#10;&#10;• x86_64: 64位（推荐）&#10;• x86: 32位（传统）&#10;• aarch64: ARM 64位" />
               </div>
               <select
                 {...register('build.TARGET_ARCH')}
@@ -125,7 +125,7 @@ export const BuildSection: React.FC<BuildSectionProps> = ({ form }) => {
                 <p className="mt-1 text-sm text-red-600">{errors.build.TARGET_ARCH.message}</p>
               )}
               <p className="mt-1 text-xs text-secondary-500">
-                Arquitectura del procesador objetivo
+                目标处理器架构
               </p>
             </div>
           </div>
@@ -134,7 +134,7 @@ export const BuildSection: React.FC<BuildSectionProps> = ({ form }) => {
         <div className="space-y-4">
           <h3 className="text-lg font-semibold text-secondary-900 flex items-center gap-2">
             <Download className="h-5 w-5" />
-            Opciones de Build
+            构建选项
           </h3>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -147,12 +147,12 @@ export const BuildSection: React.FC<BuildSectionProps> = ({ form }) => {
               <div className="flex-1">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium text-secondary-900">
-                    Modo Portable
-                  </span>
-                  <Tooltip content="Crea un ejecutable portable que no requiere instalación.&#10;Guarda la configuración en el mismo directorio del ejecutable." />
+                      便携模式
+                    </span>
+                    <Tooltip content="创建无需安装的便携可执行文件。&#10;配置保存在可执行文件同一目录中。" />
                 </div>
                 <p className="text-xs text-secondary-600">
-                  No requiere instalación, configuración local
+                  无需安装，本地配置
                 </p>
               </div>
             </label>
@@ -166,12 +166,12 @@ export const BuildSection: React.FC<BuildSectionProps> = ({ form }) => {
               <div className="flex-1">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium text-secondary-900">
-                    Incluir Instalador
-                  </span>
-                  <Tooltip content="Genera también un instalador MSI para Windows.&#10;Facilita la distribución e instalación en múltiples equipos." />
+                      包含安装程序
+                    </span>
+                    <Tooltip content="还为Windows生成MSI安装程序。&#10;便于在多台设备上分发和安装。" />
                 </div>
                 <p className="text-xs text-secondary-600">
-                  Genera instalador MSI adicional
+                  额外生成MSI安装程序
                 </p>
               </div>
             </label>
@@ -185,12 +185,12 @@ export const BuildSection: React.FC<BuildSectionProps> = ({ form }) => {
               <div className="flex-1">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium text-secondary-900">
-                    Modo Debug
-                  </span>
-                  <Tooltip content="Compila en modo debug con información adicional.&#10;Útil para desarrollo y resolución de problemas.&#10;&#10;El ejecutable será más grande y lento." />
+                      调试模式
+                    </span>
+                    <Tooltip content="以附加信息编译调试模式。&#10;对开发和问题解决很有用。&#10;&#10;可执行文件将更大更慢。" />
                 </div>
                 <p className="text-xs text-secondary-600">
-                  Incluye información de debug (más lento)
+                  包含调试信息（更慢）
                 </p>
               </div>
             </label>
@@ -204,12 +204,12 @@ export const BuildSection: React.FC<BuildSectionProps> = ({ form }) => {
               <div className="flex-1">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium text-secondary-900">
-                    Firmar Ejecutable
-                  </span>
-                  <Tooltip content="Firma digitalmente el ejecutable (requiere certificado).&#10;Mejora la confianza y evita advertencias de seguridad.&#10;&#10;Requiere configurar certificado en GitHub Secrets." />
+                      签名可执行文件
+                    </span>
+                    <Tooltip content="数字签名可执行文件（需要证书）。&#10;提高信任度并避免安全警告。&#10;&#10;需要在GitHub Secrets中配置证书。" />
                 </div>
                 <p className="text-xs text-secondary-600">
-                  Requiere certificado de código (recomendado)
+                  需要代码证书（推荐）
                 </p>
               </div>
             </label>
@@ -220,12 +220,12 @@ export const BuildSection: React.FC<BuildSectionProps> = ({ form }) => {
           <div className="flex items-start gap-3">
             <Package className="h-5 w-5 text-green-600 mt-0.5" />
             <div>
-              <h4 className="font-medium text-green-900 mb-1">Información del Build</h4>
+              <h4 className="font-medium text-green-900 mb-1">构建信息</h4>
               <ul className="text-sm text-green-800 space-y-1">
-                <li>• El build se ejecutará automáticamente en GitHub Actions</li>
-                <li>• Los artefactos estarán disponibles por 90 días</li>
-                <li>• Se generará un archivo ZIP con el ejecutable y configuración</li>
-                <li>• El tiempo de build típico es de 15-30 minutos</li>
+                <li>• 构建将在GitHub Actions中自动执行</li>
+                <li>• 构建产物将在90天内可用</li>
+                <li>• 将生成包含可执行文件和配置的ZIP文件</li>
+                <li>• 典型构建时间为15-30分钟</li>
               </ul>
             </div>
           </div>
@@ -235,13 +235,13 @@ export const BuildSection: React.FC<BuildSectionProps> = ({ form }) => {
           <div className="flex items-start gap-3">
             <FileText className="h-5 w-5 text-yellow-600 mt-0.5" />
             <div>
-              <h4 className="font-medium text-yellow-900 mb-1">Consideraciones Importantes</h4>
+              <h4 className="font-medium text-yellow-900 mb-1">重要注意事项</h4>
               <ul className="text-sm text-yellow-800 space-y-1">
-                <li>• El modo portable es ideal para uso temporal o testing</li>
-                <li>• El instalador MSI requiere permisos de administrador</li>
-                <li>• La firma digital requiere un certificado válido</li>
-                <li>• El modo debug aumenta significativamente el tamaño del archivo</li>
-                <li>• Verifica que el nombre del ejecutable sea único y descriptivo</li>
+                <li>• 便携模式非常适合临时使用或测试</li>
+                <li>• MSI安装程序需要管理员权限</li>
+                <li>• 数字签名需要有效的证书</li>
+                <li>• 调试模式会显著增加文件大小</li>
+                <li>• 请确保可执行文件名称唯一且具有描述性</li>
               </ul>
             </div>
           </div>

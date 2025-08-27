@@ -1,203 +1,203 @@
-# 🚀 RustDesk Client Generator
+# 🚀 RustDesk 客户端生成器
 
-Generador web para crear clientes personalizados de RustDesk con configuración avanzada y compilación automatizada.
+Web生成器，用于创建具有高级配置和自动编译功能的RustDesk自定义客户端。
 
-## ✨ Características
+## ✨ 功能特点
 
-- **Interfaz Web Intuitiva**: Formulario paso a paso para configurar tu cliente personalizado
-- **Configuración Completa**: Servidor, seguridad, branding, opciones avanzadas y build
-- **Múltiples Plataformas**: Soporte para Windows, Linux y macOS
-- **Compilación Automatizada**: GitHub Actions para build automático
-- **Scripts Locales**: Scripts para compilación local en cada plataforma
-- **Exportación Flexible**: Descarga configuración como JSON o variables de entorno
+- **直观的Web界面**：逐步表单，用于配置您的自定义客户端
+- **完整配置**：服务器、安全、品牌、高级选项和构建设置
+- **多平台支持**：支持Windows、Linux和macOS
+- **自动编译**：使用GitHub Actions自动构建
+- **本地脚本**：适用于各平台的本地编译脚本
+- **灵活导出**：将配置下载为JSON或环境变量
 
-## 🎯 Casos de Uso
+## 🎯 使用场景
 
-- **Empresas**: Crear clientes corporativos con branding personalizado
-- **MSPs**: Generar clientes para múltiples clientes con configuraciones específicas
-- **Desarrolladores**: Personalizar RustDesk para proyectos específicos
-- **Administradores**: Configurar clientes con políticas de seguridad predefinidas
+- **企业**：创建具有自定义品牌的企业客户端
+- **MSP服务商**：为多个客户生成具有特定配置的客户端
+- **开发者**：为特定项目自定义RustDesk
+- **管理员**：使用预定义的安全策略配置客户端
 
-## 🛠️ Tecnologías
+## 🛠️ 技术栈
 
-- **Frontend**: React 18 + TypeScript + Vite
-- **UI**: Tailwind CSS + shadcn/ui
-- **Validación**: Zod + React Hook Form
-- **Build**: GitHub Actions + Scripts multiplataforma
-- **Procesamiento**: PowerShell, Bash, Python
+- **前端**：React 18 + TypeScript + Vite
+- **UI**：Tailwind CSS + shadcn/ui
+- **验证**：Zod + React Hook Form
+- **构建**：GitHub Actions + 多平台脚本
+- **处理**：PowerShell、Bash、Python
 
-## 📋 Requisitos
+## 📋 要求
 
-### Para usar la interfaz web:
+### 使用Web界面：
 - Node.js 18+
-- npm o yarn
+- npm或yarn
 
-### Para compilación local:
-- **Windows**: PowerShell 5.1+, Visual Studio Build Tools
-- **Linux**: Bash, Rust, dependencias de desarrollo
-- **macOS**: Bash, Xcode Command Line Tools, Rust
+### 本地编译：
+- **Windows**：PowerShell 5.1+、Visual Studio Build Tools
+- **Linux**：Bash、Rust、开发依赖项
+- **macOS**：Bash、Xcode命令行工具、Rust
 
-### Para GitHub Actions:
-- Repositorio en GitHub
-- Secrets configurados (opcional, para firma)
+### GitHub Actions：
+- GitHub仓库
+- 配置的secrets（可选，用于签名）
 
-## 🌐 Demo en Vivo
+## 🌐 在线演示
 
-**URL de la aplicación**: https://gilberth.github.io/rustdesk-client-generator/
+**应用URL**：https://gilberth.github.io/rustdesk-client-generator/
 
-La aplicación está desplegada automáticamente en GitHub Pages y se actualiza con cada push a la rama main.
+该应用程序自动部署在GitHub Pages上，并随着每次推送到main分支而更新。
 
-## 🚀 Inicio Rápido
+## 🚀 快速开始
 
-### 1. Clonar e instalar dependencias
+### 1. 克隆并安装依赖
 
 ```bash
-git clone <repository-url>
+git clone <仓库URL>
 cd rustdesk-client-generator
 npm install
 ```
 
-### 2. Ejecutar en modo desarrollo
+### 2. 在开发模式下运行
 
 ```bash
 npm run dev
 ```
 
-### 3. Abrir en el navegador
+### 3. 在浏览器中打开
 
-Visita `http://localhost:5173` para acceder a la interfaz web.
+访问`http://localhost:5173`以访问Web界面。
 
-### 4. Configurar tu cliente
+### 4. 配置您的客户端
 
-1. **Servidor**: Configura servidor de encuentro, clave pública y API
-2. **Seguridad**: Establece contraseñas, claves de acceso y políticas
-3. **Branding**: Personaliza nombre, logo, colores y textos
-4. **Opciones Avanzadas**: Ajusta red, pantalla y rendimiento
-5. **Build**: Define nombre del ejecutable, versión y opciones de compilación
+1. **服务器**：配置中继服务器、公钥和API
+2. **安全**：设置密码、访问密钥和策略
+3. **品牌**：自定义名称、徽标、颜色和文本
+4. **高级选项**：调整网络、屏幕和性能
+5. **构建**：定义可执行文件名、版本和编译选项
 
-### 5. Generar cliente
+### 5. 生成客户端
 
-- **Opción A**: Descargar configuración y usar scripts locales
-- **Opción B**: Usar GitHub Actions para compilación automática
+- **选项A**：下载配置并使用本地脚本
+- **选项B**：使用GitHub Actions进行自动编译
 
-## 📁 Estructura del Proyecto
+## 📁 项目结构
 
 ```
 rustdesk-client-generator/
 ├── src/
 │   ├── components/
-│   │   ├── forms/          # Componentes de formulario
-│   │   └── ui/             # Componentes UI base
-│   ├── types/              # Tipos TypeScript
-│   ├── utils/              # Utilidades
-│   └── App.tsx             # Aplicación principal
+│   │   ├── forms/          # 表单组件
+│   │   └── ui/             # 基础UI组件
+│   ├── types/              # TypeScript类型
+│   ├── utils/              # 工具函数
+│   └── App.tsx             # 主应用程序
 ├── scripts/
-│   ├── apply-config.ps1    # Script PowerShell para Windows
-│   ├── build-linux.sh     # Script Bash para Linux
-│   ├── build-macos.sh     # Script Bash para macOS
-│   └── build-windows.ps1  # Script PowerShell para Windows
+│   ├── apply-config.ps1    # Windows PowerShell脚本
+│   ├── build-linux.sh     # Linux Bash脚本
+│   ├── build-macos.sh     # macOS Bash脚本
+│   └── build-windows.ps1  # Windows PowerShell脚本
 ├── .github/workflows/
-│   └── build-windows.yml  # GitHub Actions para Windows
-└── docs/                   # Documentación adicional
+│   └── build-windows.yml  # Windows GitHub Actions
+└── docs/                   # 额外文档
 ```
 
-## 🔧 Configuración Detallada
+## 🔧 详细配置
 
-### Servidor
+### 服务器
 
-- **Servidor de Encuentro**: IP o dominio del servidor RustDesk
-- **Clave Pública**: Clave pública para verificación de servidor
-- **Servidor API**: Endpoint para API de gestión (opcional)
+- **中继服务器**：RustDesk服务器的IP或域名
+- **公钥**：用于服务器验证的公钥
+- **API服务器**：管理API的端点（可选）
 
-### Seguridad
+### 安全
 
-- **Contraseña Fija**: Contraseña predefinida para conexiones
-- **Clave de Acceso**: Clave adicional de seguridad
-- **Políticas**: Remover fondo, bloquear entrada local, modo privacidad
-- **Grabación**: Configuración de grabación de sesiones
+- **固定密码**：用于连接的预定义密码
+- **访问密钥**：额外的安全密钥
+- **策略**：移除背景、阻止本地输入、隐私模式
+- **录制**：会话录制配置
 
-### Branding
+### 品牌
 
-- **Identidad**: Nombre de aplicación, empresa, sitio web
-- **Visual**: Logo, icono, colores personalizados
-- **Textos**: Mensaje de bienvenida, información de soporte
-- **Localización**: Idioma y configuraciones regionales
+- **身份**：应用名称、公司、网站
+- **视觉**：徽标、图标、自定义颜色
+- **文本**：欢迎消息、支持信息
+- **本地化**：语言和区域设置
 
-### Opciones Avanzadas
+### 高级选项
 
-- **Red**: Puertos TCP/UDP, servidores STUN
-- **Pantalla**: Calidad de video, FPS máximo, codec
-- **Rendimiento**: Hardware acceleration, acceso directo IP
-- **Características**: Audio, transferencia de archivos, portapapeles
+- **网络**：TCP/UDP端口、STUN服务器
+- **屏幕**：视频质量、最大FPS、编解码器
+- **性能**：硬件加速、IP直接访问
+- **功能**：音频、文件传输、剪贴板
 
-### Build
+### 构建
 
-- **Ejecutable**: Nombre y versión del archivo final
-- **Plataforma**: Arquitectura objetivo (x86_64, ARM64, etc.)
-- **Modo**: Debug vs Release, portable vs instalador
-- **Firma**: Certificados de código para distribución
+- **可执行文件**：最终文件的名称和版本
+- **平台**：目标架构（x86_64、ARM64等）
+- **模式**：调试vs发布，便携vs安装程序
+- **签名**：用于分发的代码证书
 
-## 🖥️ Compilación Local
+## 🖥️ 本地编译
 
 ### Windows
 
 ```powershell
-# Aplicar configuración
+# 应用配置
 .\scripts\apply-config.ps1 -ConfigPath config.json -RustDeskPath rustdesk-source
 
-# Compilar (requiere script adicional)
+# 编译（需要额外脚本）
 .\scripts\build-windows.ps1 -Config config.json -Architecture x64 -Release
 ```
 
 ### Linux
 
 ```bash
-# Hacer ejecutable
+# 设为可执行
 chmod +x scripts/build-linux.sh
 
-# Compilar
+# 编译
 ./scripts/build-linux.sh --config config.json --arch x86_64 --release
 ```
 
 ### macOS
 
 ```bash
-# Hacer ejecutable
+# 设为可执行
 chmod +x scripts/build-macos.sh
 
-# Compilar
+# 编译
 ./scripts/build-macos.sh --config config.json --arch x86_64 --release --sign
 ```
 
-## ☁️ Compilación con GitHub Actions
+## ☁️ 使用GitHub Actions编译
 
-### 1. Configurar repositorio
+### 1. 配置仓库
 
-1. Fork o clona este repositorio
-2. Habilita GitHub Actions
-3. Configura secrets si necesitas firma de código
+1. Fork或克隆此仓库
+2. 启用GitHub Actions
+3. 如果需要代码签名，配置secrets
 
-### 2. Ejecutar workflow
+### 2. 运行工作流
 
-1. Ve a Actions > Build Custom RustDesk Client
-2. Haz clic en "Run workflow"
-3. Pega tu configuración JSON
-4. Configura opciones de build
-5. Ejecuta el workflow
+1. 前往Actions > Build Custom RustDesk Client
+2. 点击"Run workflow"
+3. 粘贴您的JSON配置
+4. 配置构建选项
+5. 运行工作流
 
-### 3. Descargar resultado
+### 3. 下载结果
 
-Los artefactos estarán disponibles en la página del workflow por 90 días.
+构建产物将在工作流页面上可用90天。
 
-## 🔐 Configuración de Secrets
+## 🔐 Secrets配置
 
-Para funcionalidades avanzadas, configura estos secrets en GitHub:
+对于高级功能，请在GitHub中配置以下secrets：
 
 ```
-CODE_SIGNING_CERT=<certificado-base64>
-CODE_SIGNING_PASSWORD=<contraseña-certificado>
-APPLE_ID=<apple-id-para-notarizacion>
-APPLE_PASSWORD=<contraseña-especifica-app>
+CODE_SIGNING_CERT=<base64证书>
+CODE_SIGNING_PASSWORD=<证书密码>
+APPLE_ID=<用于公证的apple-id>
+APPLE_PASSWORD=<应用专用密码>
 ```
 
 ## 📖 Ejemplos de Configuración

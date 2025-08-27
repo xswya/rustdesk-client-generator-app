@@ -1,28 +1,28 @@
 # BACKUP_INFO.md - Información de cambios y respaldos
 
-## Última actualización: 2025-01-14
+## 最后更新: 2025-01-14
 
-## Cambios Implementados
+## 已实现的更改
 
-### **Fix del target default-run y completar implementación**
-**Fecha:** 2025-01-14  
-**Problema:** Muchas opciones de la interfaz web no estaban implementadas en el workflow de GitHub Actions.
+### **修复default-run目标并完成实现**
+**日期:** 2025-01-14  
+**问题:** Web界面的许多选项未在GitHub Actions工作流中实现。
 
-**Archivos modificados:**
-1. `.github/workflows/build-rustdesk-final.yml` - Workflow principal con todas las opciones
-2. `src/types/config.ts` - Agregado `RELAY_SERVER` y nuevas opciones avanzadas
-3. `src/components/forms/ServerSection.tsx` - Agregado campo `RELAY_SERVER`
-4. `src/components/forms/AdvancedSection.tsx` - Mejorado con opciones de portapapeles
+**修改的文件:**
+1. `.github/workflows/build-rustdesk-final.yml` - 包含所有选项的主工作流
+2. `src/types/config.ts` - 添加了`RELAY_SERVER`和新的高级选项
+3. `src/components/forms/ServerSection.tsx` - 添加了`RELAY_SERVER`字段
+4. `src/components/forms/AdvancedSection.tsx` - 增强了剪贴板选项
 
-### **Opciones Implementadas Completamente:**
+### **完全实现的选项:**
 
-#### **Server Configuration:**
+#### **服务器配置:**
 - ✅ `RENDEZVOUS_SERVER` → `pub const RENDEZVOUS_SERVER`
-- ✅ `RELAY_SERVER` → `pub const RELAY_SERVER` (default: RENDEZVOUS_SERVER)
-- ✅ `RS_PUB_KEY` → `pub const KEY` (mapeo correcto)
+- ✅ `RELAY_SERVER` → `pub const RELAY_SERVER` (默认值: RENDEZVOUS_SERVER)
+- ✅ `RS_PUB_KEY` → `pub const KEY` (正确映射)
 - ✅ `API_SERVER` → `pub const API_SERVER`
 
-#### **Branding Configuration:**
+#### **品牌配置:**
 - ✅ `APP_NAME` → `pub const APP_NAME`
 - ✅ `PRODUCT_NAME` → `pub const PRODUCT_NAME`
 - ✅ `COMPANY_NAME` → `pub const COMPANY_NAME`
@@ -33,7 +33,7 @@
 - ✅ `SUPPORT_INFO` → `pub const SUPPORT_INFO`
 - ✅ `SUPPORT_URL` → `pub const SUPPORT_URL`
 
-#### **Security Configuration:**
+#### **安全配置:**
 - ✅ `PRESET_PASSWORD` → `pub const PRESET_PASSWORD`
 - ✅ `ACCESS_KEY` → `pub const ACCESS_KEY`
 - ✅ `PRESET_REMOVE_WALLPAPER` → `pub const PRESET_REMOVE_WALLPAPER`
@@ -41,16 +41,16 @@
 - ✅ `PRESET_PRIVACY_MODE` → `pub const PRESET_PRIVACY_MODE`
 - ✅ `PRESET_RECORD_SESSION` → `pub const PRESET_RECORD_SESSION`
 
-#### **Build Configuration:**
+#### **构建配置:**
 - ✅ `VERSION` → `pub const VERSION`
 - ✅ `BUILD_DESCRIPTION` → `pub const BUILD_DESCRIPTION`
 - ✅ `TARGET_ARCH` → `pub const TARGET_ARCH`
 - ✅ `SIGN_EXECUTABLE` → `pub const SIGN_EXECUTABLE`
-- ✅ `ENABLE_PORTABLE_MODE` → Workflow logic + flags
-- ✅ `INCLUDE_INSTALLER` → Installer logic
-- ✅ `ENABLE_DEBUG_MODE` → Build mode selection
+- ✅ `ENABLE_PORTABLE_MODE` → 工作流逻辑 + 标志
+- ✅ `INCLUDE_INSTALLER` → 安装程序逻辑
+- ✅ `ENABLE_DEBUG_MODE` → 构建模式选择
 
-#### **Advanced Configuration:**
+#### **高级配置:**
 - ✅ `CUSTOM_TCP_PORT` → `pub const CUSTOM_TCP_PORT`
 - ✅ `CUSTOM_UDP_PORT` → `pub const CUSTOM_UDP_PORT`
 - ✅ `CUSTOM_STUN_SERVERS` → `pub const CUSTOM_STUN_SERVERS`
@@ -67,21 +67,21 @@
 - ✅ `theme` → `pub const DEFAULT_THEME`
 - ✅ `lang` → `pub const DEFAULT_LANGUAGE`
 
-### **Correcciones Importantes:**
+### **重要修复:**
 
-1. **Fix del default-run target:**
+1. **修复default-run目标:**
    ```powershell
-   # Actualiza default-run target si APP_NAME ≠ "rustdesk"
+   # 如果APP_NAME ≠ "rustdesk"，更新default-run目标
    $cargoContent = $cargoContent -replace 'default-run = "rustdesk"', "default-run = `"$($config.branding.APP_NAME)`""
    ```
 
-2. **Mapeo correcto RS_PUB_KEY → KEY:**
+2. **正确映射RS_PUB_KEY → KEY:**
    ```powershell
-   # Map RS_PUB_KEY to KEY for RustDesk compatibility
+   # 为RustDesk兼容性将RS_PUB_KEY映射到KEY
    $rustConfigLines += "pub const KEY: &str = `"$($config.server.RS_PUB_KEY)`";"
    ```
 
-3. **Modo portable implementado correctamente:**
+3. **正确实现便携模式:**
    ```powershell
    if ("${{ inputs.enable_portable }}" -eq "true") {
      $env:PORTABLE = "1"
@@ -89,37 +89,37 @@
    }
    ```
 
-4. **Instalador inteligente:**
-   - No se crea en modo portable
-   - Usa variables de branding dinámicas
-   - Maneja versiones automáticamente
+4. **智能安装程序:**
+   - 便携模式下不创建
+   - 使用动态品牌变量
+   - 自动处理版本
 
-### **Estado Actual:**
-- ✅ **100% de las opciones web implementadas** en el workflow
-- ✅ **Mapeos corregidos** (RS_PUB_KEY → KEY)
-- ✅ **Default-run target fix** funcional
-- ✅ **Modo portable** completamente implementado
-- ✅ **Validaciones de config** actualizadas
-- ✅ **Compatibilidad completa** entre interfaz web y workflow
+### **当前状态:**
+- ✅ **100%的Web选项在工作流中实现**
+- ✅ **修正了映射** (RS_PUB_KEY → KEY)
+- ✅ **default-run目标修复** 功能正常
+- ✅ **便携模式** 完全实现
+- ✅ **配置验证** 已更新
+- ✅ **Web界面与工作流之间的完全兼容性**
 
-### **Próximos pasos recomendados:**
-1. Probar build completo con todas las opciones
-2. Verificar que todos los constantes se generen correctamente
-3. Documentar opciones avanzadas para usuarios finales
+### **推荐的下一步:**
+1. 测试带有所有选项的完整构建
+2. 验证所有常量是否正确生成
+3. 为最终用户记录高级选项
 
-## Comandos de Desarrollo
+## 开发命令
 
-### Verificar tipos:
+### 检查类型:
 ```bash
 npm run type-check
 ```
 
-### Ejecutar en desarrollo:
+### 开发模式运行:
 ```bash
 npm run dev
 ```
 
-### Build de producción:
+### 生产环境构建:
 ```bash
 npm run build
 ```

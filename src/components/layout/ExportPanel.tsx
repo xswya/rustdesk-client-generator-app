@@ -28,7 +28,7 @@ export const ExportPanel: React.FC<ExportPanelProps> = ({ config, onClose }) => 
           <div className="flex items-center space-x-3">
             <CheckCircle className="w-6 h-6 text-green-600" />
             <h2 className="text-xl font-semibold text-gray-900">
-              ¡Configuración Completada!
+              配置已完成！
             </h2>
           </div>
           <Button
@@ -50,11 +50,11 @@ export const ExportPanel: React.FC<ExportPanelProps> = ({ config, onClose }) => 
                 <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
                 <div>
                   <h3 className="text-sm font-medium text-green-800">
-                    Configuración lista para usar
+                    配置准备就绪
                   </h3>
                   <p className="text-sm text-green-700 mt-1">
-                    Tu configuración de RustDesk ha sido completada exitosamente. 
-                    Ahora puedes descargar los archivos necesarios para compilar tu cliente personalizado.
+                    您的RustDesk配置已成功完成。
+                    现在您可以下载编译自定义客户端所需的文件。
                   </p>
                 </div>
               </div>
@@ -63,31 +63,31 @@ export const ExportPanel: React.FC<ExportPanelProps> = ({ config, onClose }) => 
             {/* Export Section */}
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Opciones de Compilación
+                编译选项
               </h3>
               
               {/* Compilación Automática */}
               <div className="mb-6 border border-blue-200 rounded-lg p-4 bg-blue-50">
                 <div className="flex items-center space-x-3 mb-3">
                   <Github className="w-5 h-5 text-blue-600" />
-                  <h4 className="font-medium text-gray-900">Compilación Automática</h4>
-                  <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">Recomendado</span>
+                  <h4 className="font-medium text-gray-900">自动编译</h4>
+                  <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">推荐</span>
                 </div>
                 <p className="text-sm text-gray-700 mb-3">
-                  Compila automáticamente tu cliente RustDesk usando GitHub Actions. 
-                  Solo necesitas tu repositorio de GitHub y un token de acceso.
+                  使用GitHub Actions自动编译您的RustDesk客户端。
+                  您只需要GitHub仓库和访问令牌。
                 </p>
                 <Button
                   onClick={() => setShowGitHubPanel(true)}
                   className="w-full flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700"
                 >
                   <Github className="w-4 h-4" />
-                  <span>Compilar Automáticamente</span>
+                  <span>自动编译</span>
                 </Button>
               </div>
 
               <h4 className="text-md font-medium text-gray-900 mb-3">
-                O descargar archivos para compilación manual:
+                或下载文件进行手动编译：
               </h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="border border-gray-200 rounded-lg p-4">
@@ -96,14 +96,14 @@ export const ExportPanel: React.FC<ExportPanelProps> = ({ config, onClose }) => 
                     <h4 className="font-medium text-gray-900">config.json</h4>
                   </div>
                   <p className="text-sm text-gray-600 mb-3">
-                    Archivo de configuración principal con todos los parámetros del cliente.
+                    包含客户端所有参数的主配置文件。
                   </p>
                   <Button
                     onClick={handleExportConfig}
                     className="w-full flex items-center justify-center space-x-2"
                   >
                     <Download className="w-4 h-4" />
-                    <span>Descargar config.json</span>
+                    <span>下载 config.json</span>
                   </Button>
                 </div>
 
@@ -113,7 +113,7 @@ export const ExportPanel: React.FC<ExportPanelProps> = ({ config, onClose }) => 
                     <h4 className="font-medium text-gray-900">.env.example</h4>
                   </div>
                   <p className="text-sm text-gray-600 mb-3">
-                    Variables de entorno para usar en scripts de compilación.
+                    用于编译脚本的环境变量。
                   </p>
                   <Button
                     onClick={handleExportEnv}
@@ -121,7 +121,7 @@ export const ExportPanel: React.FC<ExportPanelProps> = ({ config, onClose }) => 
                     className="w-full flex items-center justify-center space-x-2"
                   >
                     <Download className="w-4 h-4" />
-                    <span>Descargar .env.example</span>
+                    <span>下载 .env.example</span>
                   </Button>
                 </div>
               </div>
@@ -130,13 +130,13 @@ export const ExportPanel: React.FC<ExportPanelProps> = ({ config, onClose }) => 
             {/* Next Steps */}
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Próximos Pasos
-              </h3>
+              后续步骤
+            </h3>
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <ol className="list-decimal list-inside space-y-2 text-sm text-blue-800">
-                  <li>Descarga el archivo <code className="bg-blue-100 px-1 rounded">config.json</code></li>
-                  <li>Colócalo en la raíz de tu proyecto RustDesk</li>
-                  <li>Ejecuta el script de compilación correspondiente a tu sistema:</li>
+                  <li>下载文件 <code className="bg-blue-100 px-1 rounded">config.json</code></li>
+                  <li>将其放在RustDesk项目的根目录</li>
+                  <li>运行与您的系统对应的编译脚本：</li>
                 </ol>
                 <div className="mt-3 bg-blue-100 rounded p-3">
                   <code className="text-xs text-blue-900 block">
@@ -154,8 +154,8 @@ export const ExportPanel: React.FC<ExportPanelProps> = ({ config, onClose }) => 
             {/* Configuration Summary */}
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Resumen de Configuración
-              </h3>
+              配置摘要
+            </h3>
               <div className="bg-gray-50 rounded-lg p-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                   <div>
@@ -194,14 +194,14 @@ export const ExportPanel: React.FC<ExportPanelProps> = ({ config, onClose }) => 
             variant="outline"
             onClick={onClose}
           >
-            Cerrar
+            关闭
           </Button>
           <Button
             onClick={handleExportConfig}
             className="flex items-center space-x-2"
           >
             <Download className="w-4 h-4" />
-            <span>Descargar config.json</span>
+            <span>下载 config.json</span>
           </Button>
         </div>
       </div>

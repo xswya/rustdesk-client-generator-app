@@ -19,9 +19,9 @@ export const AdvancedSection: React.FC<AdvancedSectionProps> = ({ form }) => {
           <Settings className="h-4 w-4" />
         </div>
         <div>
-          <h2 className="form-section-title">Opciones Avanzadas</h2>
+          <h2 className="form-section-title">高级选项</h2>
           <p className="form-section-description">
-            Configuraciones técnicas y de rendimiento del cliente
+            客户端的技术和性能配置
           </p>
         </div>
       </div>
@@ -30,16 +30,16 @@ export const AdvancedSection: React.FC<AdvancedSectionProps> = ({ form }) => {
         <div className="space-y-4">
           <h3 className="text-lg font-semibold text-secondary-900 flex items-center gap-2">
             <Network className="h-5 w-5" />
-            Configuración de Red
+            网络配置
           </h3>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <label className="text-sm font-medium text-secondary-900">
-                  Puerto TCP Personalizado
+                  自定义TCP端口
                 </label>
-                <Tooltip content="Puerto TCP personalizado para conexiones directas.&#10;Rango válido: 1024-65535&#10;&#10;Puerto por defecto de RustDesk: 21118" />
+                <Tooltip content="用于直接连接的自定义TCP端口。&#10;有效范围：1024-65535&#10;&#10;RustDesk默认端口：21118" />
               </div>
               <Input
                 {...register('advanced.CUSTOM_TCP_PORT')}
@@ -48,16 +48,16 @@ export const AdvancedSection: React.FC<AdvancedSectionProps> = ({ form }) => {
                 min="1024"
                 max="65535"
                 error={errors.advanced?.CUSTOM_TCP_PORT?.message}
-                helperText="Puerto para conexiones TCP directas"
+                helperText="用于直接TCP连接的端口"
               />
             </div>
 
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <label className="text-sm font-medium text-secondary-900">
-                  Puerto UDP Personalizado
+                  自定义UDP端口
                 </label>
-                <Tooltip content="Puerto UDP personalizado para descubrimiento local.&#10;Rango válido: 1024-65535&#10;&#10;Puerto por defecto de RustDesk: 21116" />
+                <Tooltip content="用于本地发现的自定义UDP端口。&#10;有效范围：1024-65535&#10;&#10;RustDesk默认端口：21116" />
               </div>
               <Input
                 {...register('advanced.CUSTOM_UDP_PORT')}
@@ -66,7 +66,7 @@ export const AdvancedSection: React.FC<AdvancedSectionProps> = ({ form }) => {
                 min="1024"
                 max="65535"
                 error={errors.advanced?.CUSTOM_UDP_PORT?.message}
-                helperText="Puerto para descubrimiento UDP"
+                helperText="用于UDP发现的端口"
               />
             </div>
           </div>
@@ -74,15 +74,15 @@ export const AdvancedSection: React.FC<AdvancedSectionProps> = ({ form }) => {
           <div>
             <div className="flex items-center gap-2 mb-2">
               <label className="text-sm font-medium text-secondary-900">
-                Servidores STUN Personalizados
-              </label>
-              <Tooltip content="Lista de servidores STUN separados por comas.&#10;Usado para NAT traversal en conexiones P2P.&#10;&#10;Ejemplo: stun.l.google.com:19302,stun1.l.google.com:19302" />
+                  自定义STUN服务器
+                </label>
+                <Tooltip content="用逗号分隔的STUN服务器列表。&#10;用于P2P连接中的NAT穿透。&#10;&#10;示例：stun.l.google.com:19302,stun1.l.google.com:19302" />
             </div>
             <Input
               {...register('advanced.CUSTOM_STUN_SERVERS')}
               placeholder="stun.l.google.com:19302,stun1.l.google.com:19302"
               error={errors.advanced?.CUSTOM_STUN_SERVERS?.message}
-              helperText="Servidores STUN separados por comas"
+              helperText="用逗号分隔的STUN服务器"
             />
           </div>
         </div>
@@ -90,41 +90,41 @@ export const AdvancedSection: React.FC<AdvancedSectionProps> = ({ form }) => {
         <div className="space-y-4">
           <h3 className="text-lg font-semibold text-secondary-900 flex items-center gap-2">
             <Monitor className="h-5 w-5" />
-            Configuración de Pantalla
+            显示配置
           </h3>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <label className="text-sm font-medium text-secondary-900">
-                  Calidad de Video por Defecto
+                  默认视频质量
                 </label>
-                <Tooltip content="Calidad de video inicial para conexiones.&#10;Valores: low, medium, high, best&#10;&#10;Mayor calidad requiere más ancho de banda." />
+                <Tooltip content="连接的初始视频质量。&#10;值：low, medium, high, best&#10;&#10;更高质量需要更多带宽。" />
               </div>
               <select
                 {...register('advanced.DEFAULT_VIDEO_QUALITY')}
                 className="w-full px-3 py-2 border border-secondary-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
               >
-                <option value="">Seleccionar calidad...</option>
-                <option value="low">Baja (más rápido)</option>
-                <option value="medium">Media (balanceado)</option>
-                <option value="high">Alta (mejor calidad)</option>
-                <option value="best">Máxima (mejor calidad)</option>
+                <option value="">选择质量...</option>
+                <option value="low">低（更快）</option>
+                <option value="medium">中（平衡）</option>
+                <option value="high">高（更好质量）</option>
+                <option value="best">最高（最佳质量）</option>
               </select>
               {errors.advanced?.DEFAULT_VIDEO_QUALITY && (
                 <p className="mt-1 text-sm text-red-600">{errors.advanced.DEFAULT_VIDEO_QUALITY.message}</p>
               )}
               <p className="mt-1 text-xs text-secondary-500">
-                Calidad inicial de video para conexiones
-              </p>
+                  连接的初始视频质量
+                </p>
             </div>
 
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <label className="text-sm font-medium text-secondary-900">
-                  FPS Máximo
+                  最大FPS
                 </label>
-                <Tooltip content="Frames por segundo máximo para transmisión de video.&#10;Rango: 5-60 FPS&#10;&#10;Más FPS requiere más ancho de banda." />
+                <Tooltip content="视频传输的最大每秒帧数。&#10;范围：5-60 FPS&#10;&#10;更高FPS需要更多带宽。" />
               </div>
               <Input
                 {...register('advanced.MAX_FPS')}
@@ -133,7 +133,7 @@ export const AdvancedSection: React.FC<AdvancedSectionProps> = ({ form }) => {
                 min="5"
                 max="60"
                 error={errors.advanced?.MAX_FPS?.message}
-                helperText="Frames por segundo máximo (5-60)"
+                helperText="最大每秒帧数（5-60）"
               />
             </div>
           </div>
@@ -142,7 +142,7 @@ export const AdvancedSection: React.FC<AdvancedSectionProps> = ({ form }) => {
         <div className="space-y-4">
           <h3 className="text-lg font-semibold text-secondary-900 flex items-center gap-2">
             <Cpu className="h-5 w-5" />
-            Configuración de Rendimiento
+            性能配置
           </h3>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -155,12 +155,12 @@ export const AdvancedSection: React.FC<AdvancedSectionProps> = ({ form }) => {
               <div className="flex-1">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium text-secondary-900">
-                    Habilitar Codec por Hardware
-                  </span>
-                  <Tooltip content="Usa aceleración por hardware para codificación de video.&#10;Mejora el rendimiento pero requiere GPU compatible." />
+                      启用硬件编解码器
+                    </span>
+                    <Tooltip content="使用硬件加速进行视频编码。&#10;提高性能但需要兼容的GPU。" />
                 </div>
                 <p className="text-xs text-secondary-600">
-                  Mejora el rendimiento con GPU compatible
+                  使用兼容GPU提高性能
                 </p>
               </div>
             </label>
@@ -174,12 +174,12 @@ export const AdvancedSection: React.FC<AdvancedSectionProps> = ({ form }) => {
               <div className="flex-1">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium text-secondary-900">
-                    Permitir Acceso Directo por IP
-                  </span>
-                  <Tooltip content="Permite conexiones directas usando direcciones IP.&#10;Útil para redes locales sin servidor de encuentro." />
+                      允许IP直接访问
+                    </span>
+                    <Tooltip content="允许使用IP地址直接连接。&#10;适用于没有中继服务器的局域网。" />
                 </div>
                 <p className="text-xs text-secondary-600">
-                  Conexiones directas por IP en red local
+                  局域网内通过IP直接连接
                 </p>
               </div>
             </label>
@@ -193,12 +193,12 @@ export const AdvancedSection: React.FC<AdvancedSectionProps> = ({ form }) => {
               <div className="flex-1">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium text-secondary-900">
-                    Deshabilitar Audio
-                  </span>
-                  <Tooltip content="Deshabilita la transmisión de audio por defecto.&#10;Reduce el uso de ancho de banda." />
+                      禁用音频
+                    </span>
+                    <Tooltip content="默认禁用音频传输。&#10;减少带宽使用。" />
                 </div>
                 <p className="text-xs text-secondary-600">
-                  Reduce el uso de ancho de banda
+                  减少带宽使用
                 </p>
               </div>
             </label>
@@ -212,12 +212,12 @@ export const AdvancedSection: React.FC<AdvancedSectionProps> = ({ form }) => {
               <div className="flex-1">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium text-secondary-900">
-                    Habilitar Transferencia de Archivos
-                  </span>
-                  <Tooltip content="Permite la transferencia de archivos entre cliente y servidor.&#10;Puede representar un riesgo de seguridad." />
+                      启用文件传输
+                    </span>
+                    <Tooltip content="允许在客户端和服务器之间传输文件。&#10;可能存在安全风险。" />
                 </div>
                 <p className="text-xs text-secondary-600">
-                  Permite intercambio de archivos
+                  允许文件交换
                 </p>
               </div>
             </label>
@@ -231,12 +231,12 @@ export const AdvancedSection: React.FC<AdvancedSectionProps> = ({ form }) => {
               <div className="flex-1">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium text-secondary-900">
-                    Deshabilitar Portapapeles
-                  </span>
-                  <Tooltip content="Deshabilita el intercambio de portapapeles entre cliente y servidor.&#10;Mejora la seguridad evitando transferencia accidental de datos." />
+                      禁用剪贴板
+                    </span>
+                    <Tooltip content="禁用客户端和服务器之间的剪贴板交换。&#10;通过防止意外数据传输提高安全性。" />
                 </div>
                 <p className="text-xs text-secondary-600">
-                  Mejora la seguridad de datos
+                  提高数据安全性
                 </p>
               </div>
             </label>
@@ -247,13 +247,13 @@ export const AdvancedSection: React.FC<AdvancedSectionProps> = ({ form }) => {
           <div className="flex items-start gap-3">
             <Settings className="h-5 w-5 text-orange-600 mt-0.5" />
             <div>
-              <h4 className="font-medium text-orange-900 mb-1">Configuraciones Avanzadas</h4>
+              <h4 className="font-medium text-orange-900 mb-1">高级配置</h4>
               <ul className="text-sm text-orange-800 space-y-1">
-                <li>• Los puertos personalizados deben estar abiertos en el firewall</li>
-                <li>• El codec por hardware requiere drivers actualizados</li>
-                <li>• Mayor calidad de video requiere más ancho de banda</li>
-                <li>• La transferencia de archivos puede ser un riesgo de seguridad</li>
-                <li>• Prueba las configuraciones en un entorno controlado primero</li>
+                <li>• 自定义端口必须在防火墙中开放</li>
+                <li>• 硬件编解码器需要更新的驱动程序</li>
+                <li>• 更高的视频质量需要更多带宽</li>
+                <li>• 文件传输可能存在安全风险</li>
+                <li>• 请先在受控环境中测试配置</li>
               </ul>
             </div>
           </div>

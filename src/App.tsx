@@ -16,11 +16,11 @@ import { Button } from './components/ui/Button';
 import { Save, Download, FileText, Settings } from 'lucide-react';
 
 const steps = [
-  { id: 'server', title: 'Servidor', description: 'Configuración del servidor RustDesk' },
-  { id: 'security', title: 'Seguridad', description: 'Políticas de seguridad y acceso' },
-  { id: 'branding', title: 'Branding', description: 'Personalización visual del cliente' },
-  { id: 'advanced', title: 'Avanzado', description: 'Configuraciones avanzadas' },
-  { id: 'build', title: 'Build', description: 'Opciones de compilación y salida' }
+  { id: 'server', title: '服务器', description: 'RustDesk服务器配置' },
+  { id: 'security', title: '安全性', description: '安全策略和访问控制' },
+  { id: 'branding', title: '品牌定制', description: '客户端视觉个性化' },
+  { id: 'advanced', title: '高级选项', description: '高级配置设置' },
+  { id: 'build', title: '构建', description: '编译选项和输出设置' }
 ];
 
 function App() {
@@ -132,7 +132,7 @@ function App() {
                   onClick={prevStep}
                   disabled={currentStep === 0}
                 >
-                  Anterior
+                  上一步
                 </Button>
                 
                 <div className="flex gap-3">
@@ -143,7 +143,7 @@ function App() {
                     className="flex items-center gap-2"
                   >
                     <Save className="h-4 w-4" />
-                    Guardar Borrador
+                    保存草稿
                   </Button>
                   
                   {currentStep === steps.length - 1 ? (
@@ -153,14 +153,14 @@ function App() {
                       className="flex items-center gap-2"
                     >
                       <Settings className="h-4 w-4" />
-                      Finalizar Configuración
+                      完成配置
                     </Button>
                   ) : (
                     <Button
                       type="button"
                       onClick={nextStep}
                     >
-                      Siguiente
+                      下一步
                     </Button>
                   )}
                 </div>
@@ -172,20 +172,20 @@ function App() {
               <div className="sticky top-8 space-y-6">
                 {/* Vista previa de configuración */}
                 <div className="bg-white rounded-lg border border-gray-200 p-4">
-                  <h3 className="font-semibold text-gray-900 mb-3">Vista Previa</h3>
+                  <h3 className="font-semibold text-gray-900 mb-3">预览</h3>
                   <div className="space-y-2 text-sm">
                     <div>
-                      <span className="text-gray-600">Servidor:</span>
+                      <span className="text-gray-600">服务器:</span>
                       <span className="ml-2 font-mono text-xs">
                         {watchedValues.server?.RENDEZVOUS_SERVER || 'No configurado'}
                       </span>
                     </div>
                     <div>
-                      <span className="text-gray-600">Producto:</span>
+                      <span className="text-gray-600">产品:</span>
                       <span className="ml-2">{watchedValues.branding?.APP_NAME}</span>
                     </div>
                     <div>
-                      <span className="text-gray-600">Versión:</span>
+                      <span className="text-gray-600">版本:</span>
                       <span className="ml-2">{watchedValues.build?.VERSION}</span>
                     </div>
                   </div>
@@ -193,7 +193,7 @@ function App() {
 
                 {/* Acciones de exportación */}
                 <div className="bg-white rounded-lg border border-gray-200 p-4">
-                  <h3 className="font-semibold text-gray-900 mb-3">Exportar</h3>
+                  <h3 className="font-semibold text-gray-900 mb-3">导出</h3>
                   <div className="space-y-2">
                     <Button
                       type="button"

@@ -19,9 +19,9 @@ export const ServerSection: React.FC<ServerSectionProps> = ({ form }) => {
           <Server className="h-4 w-4" />
         </div>
         <div>
-          <h2 className="form-section-title">Configuración del Servidor</h2>
+          <h2 className="form-section-title">服务器配置</h2>
           <p className="form-section-description">
-            Configura la conexión hardcodeada al servidor RustDesk
+            配置RustDesk服务器的硬编码连接
           </p>
         </div>
       </div>
@@ -31,60 +31,60 @@ export const ServerSection: React.FC<ServerSectionProps> = ({ form }) => {
           <div>
             <div className="flex items-center gap-2 mb-2">
               <label className="text-sm font-medium text-secondary-900">
-                Servidor de Encuentro *
+                中继服务器 *
               </label>
-              <Tooltip content="FQDN del servidor RustDesk sin protocolo ni puerto.&#10;Ejemplo: hbbs.midominio.com&#10;&#10;Este servidor maneja las conexiones iniciales entre clientes." />
+              <Tooltip content="RustDesk服务器的FQDN，不包含协议和端口。&#10;例如: hbbs.mydomain.com&#10;&#10;此服务器处理客户端之间的初始连接。" />
             </div>
             <Input
               {...register('server.RENDEZVOUS_SERVER')}
-              placeholder="hbbs.midominio.com"
+              placeholder="hbbs.mydomain.com"
               error={errors.server?.RENDEZVOUS_SERVER?.message}
-              helperText="Dominio completo sin protocolo (http/https) ni puerto"
+              helperText="完整域名，不包含协议(http/https)和端口"
             />
           </div>
 
           <div>
             <div className="flex items-center gap-2 mb-2">
               <label className="text-sm font-medium text-secondary-900">
-                Servidor Relay (Opcional)
+                转发服务器 (可选)
               </label>
-              <Tooltip content="FQDN del servidor de relay para el tráfico.&#10;Ejemplo: hbbr.midominio.com&#10;&#10;Si se deja vacío, usará el mismo que RENDEZVOUS_SERVER." />
+              <Tooltip content="用于流量转发的服务器FQDN。&#10;例如: hbbr.mydomain.com&#10;&#10;如果留空，将使用与RENDEZVOUS_SERVER相同的服务器。" />
             </div>
             <Input
               {...register('server.RELAY_SERVER')}
-              placeholder="hbbr.midominio.com"
+              placeholder="hbbr.mydomain.com"
               error={errors.server?.RELAY_SERVER?.message}
-              helperText="Opcional - Si está vacío usa el servidor de encuentro"
+              helperText="可选 - 如果留空则使用中继服务器"
             />
           </div>
 
           <div>
             <div className="flex items-center gap-2 mb-2">
               <label className="text-sm font-medium text-secondary-900">
-                Clave Pública *
+                公钥 *
               </label>
-              <Tooltip content="Clave pública del servidor en formato Base64.&#10;Se encuentra en el archivo id_ed25519.pub del servidor.&#10;&#10;Ejemplo: OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=" />
+              <Tooltip content="服务器的Base64格式公钥。&#10;可在服务器的id_ed25519.pub文件中找到。&#10;&#10;例如: OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=" />
             </div>
             <Input
               {...register('server.RS_PUB_KEY')}
               placeholder="OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw="
               error={errors.server?.RS_PUB_KEY?.message}
-              helperText="Clave Base64 del archivo id_ed25519.pub"
+              helperText="id_ed25519.pub文件的Base64密钥"
             />
           </div>
 
           <div>
             <div className="flex items-center gap-2 mb-2">
               <label className="text-sm font-medium text-secondary-900">
-                Servidor API (Opcional)
+                API服务器 (可选)
               </label>
-              <Tooltip content="URL del servidor API para funciones avanzadas.&#10;Recomendado usar HTTPS detrás de un proxy como Nginx.&#10;&#10;Ejemplo: https://hbbs.midominio.com" />
+              <Tooltip content="用于高级功能的API服务器URL。&#10;建议在Nginx等代理后使用HTTPS。&#10;&#10;例如: https://hbbs.mydomain.com" />
             </div>
             <Input
               {...register('server.API_SERVER')}
-              placeholder="https://hbbs.midominio.com"
+              placeholder="https://hbbs.mydomain.com"
               error={errors.server?.API_SERVER?.message}
-              helperText="URL completa con HTTPS para el API del servidor"
+              helperText="完整的服务器API URL，包含HTTPS"
             />
           </div>
         </div>
@@ -93,11 +93,11 @@ export const ServerSection: React.FC<ServerSectionProps> = ({ form }) => {
           <div className="flex items-start gap-3">
             <Globe className="h-5 w-5 text-blue-600 mt-0.5" />
             <div>
-              <h4 className="font-medium text-blue-900 mb-1">Información Importante</h4>
+              <h4 className="font-medium text-blue-900 mb-1">重要信息</h4>
               <ul className="text-sm text-blue-800 space-y-1">
-                <li>• Si defines RENDEZVOUS_SERVER, también debes definir RS_PUB_KEY</li>
-                <li>• El cliente no funcionará si falta alguno de estos campos obligatorios</li>
-                <li>• Puertos típicos: 21114-21119 (TCP), 21116 (UDP)</li>
+                <li>• 如果定义了RENDEZVOUS_SERVER，也必须定义RS_PUB_KEY</li>
+                <li>• 如果缺少任何必填字段，客户端将无法正常工作</li>
+                <li>• 常用端口: 21114-21119 (TCP), 21116 (UDP)</li>
                 <li>• Se recomienda usar HTTPS para el API_SERVER</li>
               </ul>
             </div>

@@ -13,10 +13,10 @@ export const Header: React.FC = () => {
             </div>
             <div>
               <h1 className="text-xl font-bold text-gray-900">
-                RustDesk Client Generator
+                RustDesk客户端生成器
               </h1>
               <p className="text-sm text-gray-500">
-                Genera clientes personalizados de RustDesk
+                生成自定义RustDesk客户端
               </p>
             </div>
           </div>

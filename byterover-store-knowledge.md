@@ -1,6 +1,4 @@
-# quicksort.js
-
-- Implementa el algoritmo quicksort en JavaScript.
-- Ordena arrays de números.
-- Exporta la función para su reutilización.
-- Uso: `quicksort([3,1,2]) // [1,2,3]`
+- 在JavaScript中实现快速排序算法。
+- 对数字数组进行排序。
+- 导出函数以供重用。
+- 使用方法：`quicksort([3,1,2]) // [1,2,3]`

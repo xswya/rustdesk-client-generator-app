@@ -179,7 +179,7 @@ export const defaultConfig: Config = {
     ENABLE_HARDWARE_ACCELERATION: true,
     AUTO_UPDATE_URL: '',
     theme: 'system' as const,
-    lang: 'es',
+    lang: 'zh-CN',
     custom_kv: {}
   },
   build: {
