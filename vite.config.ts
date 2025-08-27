@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
-  base: '/rustdesk-client-generator-app/',
+  base: './', // 使用相对路径，更适合生产环境部署
   resolve: {
     alias: {
       "@": new URL('./src', import.meta.url).pathname,
@@ -12,7 +12,7 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    sourcemap: true,
+    sourcemap: false, // 生产环境关闭sourcemap
     rollupOptions: {
       output: {
         manualChunks: {
