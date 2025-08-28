@@ -163,10 +163,8 @@ jobs:
       shell: powershell
       run: |
         Write-Host "=== Generating inline UI module ==="
-        
         cd "$env:GITHUB_WORKSPACE\rustdesk"
-        
-        # 修正：为 r# 后面的字符串添加了正确的双引号
+        # This block generates the CORRECT Rust syntax: r#"..."#
         $inlineContentLines = @(
           "// Minimal inline module for compilation",
           "#[inline]",
@@ -184,25 +182,24 @@ jobs:
           "#[inline]",
           "pub fn get_cm() -> String { r#`"<html><body>Connection Manager</body></html>`"#.to_string() }"
         )
-
-        # 将数组内容写入文件
+        # Write the lines to the inline.rs file
         $inlineContentLines | Out-File -FilePath "src\ui\inline.rs" -Encoding UTF8
         Write-Host "[SUCCESS] Created inline.rs module from string array"
-        
-        # 验证文件是否已创建
+        # Verify the file was created
         if (Test-Path "src\ui\inline.rs") {
           Write-Host "[SUCCESS] inline.rs module verified"
-          $inlineSize = (Get-Item "src\ui\inline.rs").Length
-          Write-Host "inline.rs size: $inlineSize bytes"
         } else {
           Write-Host "[ERROR] inline.rs module was not created"
           exit 1
         }
+
     - name: Build RustDesk
       shell: powershell
       run: |
         Write-Host "=== Building RustDesk ==="
         cd "$env:GITHUB_WORKSPACE\rustdesk"
+        # Limit Cargo to 1 job to prevent Out-Of-Memory errors
+        $env:CARGO_BUILD_JOBS = 1
         $env:VCPKG_ROOT = "C:\vcpkg"
         $env:VCPKG_DEFAULT_TRIPLET = "x64-windows-static"
         $env:LIBCLANG_PATH = "$env:PROGRAMFILES\LLVM\bin"
