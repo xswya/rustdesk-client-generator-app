@@ -127,7 +127,9 @@ export const AdvancedSection: React.FC<AdvancedSectionProps> = ({ form }) => {
                 <Tooltip content="视频传输的最大每秒帧数。&#10;范围：5-60 FPS&#10;&#10;更高FPS需要更多带宽。" />
               </div>
               <Input
-                {...register('advanced.MAX_FPS')}
+                {...register('advanced.MAX_FPS', {
+                  setValueAs: value => parseInt(value)
+                })}
                 type="number"
                 placeholder="30"
                 min="5"
