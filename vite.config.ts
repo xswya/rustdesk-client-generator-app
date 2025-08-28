@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
-  base: '/rustdesk-client-generator-app/', // 使用相对路径，更适合生产环境部署
+  base: '/rustdesk-client-generator-app/', // 部署到 GitHub Pages 的基础路径
   resolve: {
     alias: {
       "@": new URL('./src', import.meta.url).pathname,
@@ -25,6 +25,6 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    open: true
+    open: false // 建议改为 false，以兼容所有开发环境（如 Docker）
   }
 })
