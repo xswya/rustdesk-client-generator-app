@@ -98,17 +98,13 @@ jobs:
       shell: powershell
       run: |
         Write-Host "=== Setting up vcpkg environment ==="
-        
-        # Copy our vcpkg.json to rustdesk directory
         Write-Host "Copying vcpkg.json to rustdesk directory..."
         $source = "$env:GITHUB_WORKSPACE\vcpkg.json"
         $dest = "$env:GITHUB_WORKSPACE\rustdesk\vcpkg.json"
-        
         if (-not (Test-Path $source)) {
           Write-Host "[ERROR] Source vcpkg.json not found: $source"
           exit 1
         }
-        
         Copy-Item $source $dest -Force
         Write-Host "[SUCCESS] vcpkg.json copied successfully"
         
@@ -117,68 +113,32 @@ jobs:
       run: |
         Write-Host "=== Installing vcpkg dependencies ==="
         cd "$env:GITHUB_WORKSPACE\rustdesk"
-        
-        Write-Host "Current directory: $(Get-Location)"
-        Write-Host "vcpkg.json content:"
-        Get-Content "vcpkg.json" | Write-Host
-        
         Write-Host "Running vcpkg install..."
         & "$env:VCPKG_ROOT\vcpkg.exe" install --triplet x64-windows-static --x-install-root="$env:VCPKG_ROOT\installed"
-        
         if ($LASTEXITCODE -ne 0) {
           Write-Host "[ERROR] vcpkg install failed with exit code: $LASTEXITCODE"
           exit 1
         }
-        
         Write-Host "[SUCCESS] vcpkg dependencies installed successfully"
         
     - name: Apply configuration
       shell: powershell
       run: |
         Write-Host "=== Applying configuration ==="
-        
         cd "$env:GITHUB_WORKSPACE\rustdesk"
-        
-        # Create config directory
         New-Item -Path "src\ui" -ItemType Directory -Force -ErrorAction SilentlyContinue | Out-Null
-        
-        # Write config JSON
         '${{ inputs.config_json }}' | Out-File -FilePath "src\ui\config.json" -Encoding UTF8
-        
-        # Parse configuration
         try {
           $config = '${{ inputs.config_json }}' | ConvertFrom-Json
-          
           Write-Host "[DEBUG] Configuration parsed successfully"
         } catch {
           Write-Host "[ERROR] Failed to parse configuration JSON: $($_.Exception.Message)"
           exit 1
         }
-        
-        # Validate minimum required configuration
-        if (-not $config.server.RENDEZVOUS_SERVER) {
-          Write-Host "[ERROR] RENDEZVOUS_SERVER is required but not provided"
-          exit 1
-        }
-        
-        if (-not $config.server.RS_PUB_KEY) {
-          Write-Host "[ERROR] RS_PUB_KEY is required but not provided"
-          exit 1
-        }
-        
-        if (-not $config.branding.APP_NAME) {
-          Write-Host "[WARNING] APP_NAME not provided, using default 'rustdesk'"
-          $config.branding.APP_NAME = "rustdesk"
-        }
-        
-        if (-not $config.branding.PRODUCT_NAME) {
-          Write-Host "[WARNING] PRODUCT_NAME not provided, using APP_NAME"
-          $config.branding.PRODUCT_NAME = $config.branding.APP_NAME
-        }
-        
-        Write-Host "[SUCCESS] Configuration validation passed - ready for build"
-        
-        # Create simple Rust config file using separate lines
+        if (-not $config.server.RENDEZVOUS_SERVER) { Write-Host "[ERROR] RENDEZVOUS_SERVER is required but not provided"; exit 1 }
+        if (-not $config.server.RS_PUB_KEY) { Write-Host "[ERROR] RS_PUB_KEY is required but not provided"; exit 1 }
+        if (-not $config.branding.APP_NAME) { $config.branding.APP_NAME = "rustdesk" }
+        if (-not $config.branding.PRODUCT_NAME) { $config.branding.PRODUCT_NAME = $config.branding.APP_NAME }
         $rustConfigLines = @()
         $rustConfigLines += "// Auto-generated configuration"
         $rustConfigLines += "pub const RENDEZVOUS_SERVER: &str = `"$($config.server.RENDEZVOUS_SERVER)`";"
@@ -187,74 +147,49 @@ jobs:
         $rustConfigLines += "pub const KEY: &str = `"$($config.server.RS_PUB_KEY)`";"
         $rustConfigLines += "pub const PRODUCT_NAME: &str = `"$($config.branding.PRODUCT_NAME)`";"
         $rustConfigLines += "pub const APP_NAME: &str = `"$($config.branding.APP_NAME)`";"
-        
         $rustConfigLines | Out-File -FilePath "src\config.rs" -Encoding UTF8
-        Write-Host "[SUCCESS] Rust config created"
-        
-        # Verify config.rs was created successfully
-        if (Test-Path "src\config.rs") {
-          $configSize = (Get-Item "src\config.rs").Length
-          Write-Host "[SUCCESS] config.rs created (size: $configSize bytes)"
-        } else {
-          Write-Host "[ERROR] Failed to create config.rs"
-          exit 1
-        }
-        
-        # Update Cargo.toml carefully
+        if (Test-Path "src\config.rs") { Write-Host "[SUCCESS] config.rs created" } else { Write-Host "[ERROR] Failed to create config.rs"; exit 1 }
         if (Test-Path "Cargo.toml") {
           $cargoContent = Get-Content "Cargo.toml" -Raw
-          
           if ($config.branding.APP_NAME -ne "rustdesk") {
             $cargoContent = $cargoContent -replace 'name = "rustdesk"', "name = `"$($config.branding.APP_NAME)`""
-            Write-Host "[SUCCESS] Updated package name in Cargo.toml"
-            
             $cargoContent = $cargoContent -replace 'default-run = "rustdesk"', "default-run = `"$($config.branding.APP_NAME)`""
-            Write-Host "[SUCCESS] Updated default-run target in Cargo.toml"
           }
-          
           $cargoContent | Out-File -FilePath "Cargo.toml" -Encoding UTF8
         }
-        
         Write-Host "[SUCCESS] Configuration applied successfully"
         
     - name: Generate inline module
       shell: powershell
       run: |
         Write-Host "=== Generating inline UI module ==="
-        
         cd "$env:GITHUB_WORKSPACE\rustdesk"
-        
-        New-Item -Path "src\ui" -ItemType Directory -Force -ErrorAction SilentlyContinue | Out-Null
-        $inlineContent = @"
+        $inlineContentLines = @(
+          "// Minimal inline module for compilation",
+          "#[inline]",
+          "pub fn get_index() -> String { r#`<html><body>RustDesk Client</body></html>`"#.to_string() }",
+          "#[inline]",
+          "pub fn get_remote() -> String { r#`<html><body>Remote Control</body></html>`"#.to_string() }",
+          "#[inline]",
+          "pub fn get_install() -> String { r#`<html><body>Installation</body></html>`"#.to_string() }",
+          "#[inline]",
+          "pub fn get_chatbox() -> String { r#`<html><body>Chat</body></html>`"#.to_string() }",
+          "#[inline]",
+          "pub fn get_cm() -> String { r#`<html><body>Connection Manager</body></html>`"#.to_string() }"
+        )
+        $inlineContentLines | Out-File -FilePath "src\ui\inline.rs" -Encoding UTF8
+        if (Test-Path "src\ui\inline.rs") { Write-Host "[SUCCESS] inline.rs module created and verified" } else { Write-Host "[ERROR] inline.rs module was not created"; exit 1 }
 
-#[inline]
-pub fn get_index() -> String { r#"<html><body>RustDesk Client</body></html>"#.to_string() }
-#[inline]
-pub fn get_remote() -> String { r#"<html><body>Remote Control</body></html>"#.to_string() }
-#[inline]
-pub fn get_install() -> String { r#"<html><body>Installation</body></html>"#.to_string() }
-#[inline]
-pub fn get_chatbox() -> String { r#"<html><body>Chat</body></html>"#.to_string() }
-#[inline]
-pub fn get_cm() -> String { r#"<html><body>Connection Manager</body></html>"#.to_string() }
-"@
-        $inlineContent | Out-File -FilePath "src\ui\inline.rs" -Encoding UTF8
-        Write-Host "[SUCCESS] Created minimal inline.rs module"
-        
     - name: Build RustDesk
       shell: powershell
       run: |
         Write-Host "=== Building RustDesk ==="
-        
         cd "$env:GITHUB_WORKSPACE\rustdesk"
-        
         $env:VCPKG_ROOT = "C:\vcpkg"
         $env:VCPKG_DEFAULT_TRIPLET = "x64-windows-static"
         $env:LIBCLANG_PATH = "$env:PROGRAMFILES\LLVM\bin"
         $env:RUSTFLAGS = "-C target-feature=+crt-static"
         $env:RUST_BACKTRACE = "1"
-        
-        Write-Host "Starting Cargo build..."
         if ("${{ inputs.enable_debug }}" -eq "true") {
           Write-Host "Build mode: Debug"
           cargo build --features inline --verbose
@@ -262,89 +197,46 @@ pub fn get_cm() -> String { r#"<html><body>Connection Manager</body></html>"#.to
           Write-Host "Build mode: Release"
           cargo build --release --features inline --verbose
         }
-        
-        if ($LASTEXITCODE -ne 0) {
-          Write-Host "[ERROR] Build failed with exit code $LASTEXITCODE"
-          exit $LASTEXITCODE
-        }
-        
+        if ($LASTEXITCODE -ne 0) { Write-Host "[ERROR] Build failed with exit code $LASTEXITCODE"; exit $LASTEXITCODE }
         Write-Host "[SUCCESS] Build completed successfully!"
         
-    - name: Prepare artifacts
+    - name: Prepare and Upload artifacts
       shell: powershell
       run: |
         Write-Host "=== Preparing artifacts ==="
-        
         cd "$env:GITHUB_WORKSPACE\rustdesk"
-        
-        try {
-          $config = '${{ inputs.config_json }}' | ConvertFrom-Json
-        } catch {
-          Write-Host "[ERROR] Failed to parse config JSON"
-          exit 1
-        }
-        
         $executableName = "${{ inputs.executable_name }}"
         $buildDir = if ("${{ inputs.enable_debug }}" -eq "true") { "target\debug" } else { "target\release" }
-        
-        Write-Host "Looking for executable in: $buildDir"
-        
-        $builtExecutable = Get-ChildItem "$buildDir\*.exe" | Where-Object { $_.Name -like "*rustdesk*" -or $_.Name -like "*$($config.branding.APP_NAME)*" } | Select-Object -First 1
-        
-        if (-not $builtExecutable) {
-          Write-Host "[ERROR] No executable found in ${buildDir}"
-          exit 1
-        }
-
-        Write-Host "[SUCCESS] Found executable: $($builtExecutable.FullName)"
-        
+        $builtExecutable = Get-ChildItem "$buildDir\*.exe" | Where-Object { $_.Name -like "*rustdesk*" } | Select-Object -First 1
+        if (-not $builtExecutable) { Write-Host "[ERROR] No executable found in ${buildDir}"; exit 1 }
         $finalExePath = Join-Path $builtExecutable.DirectoryName "$executableName.exe"
         Copy-Item $builtExecutable.FullName $finalExePath -Force
-        Write-Host "[SUCCESS] Copied executable to: $finalExePath"
-        
-        # Create installer if requested
+        Write-Host "[SUCCESS] Artifact prepared at: $finalExePath"
         if ("${{ inputs.create_installer }}" -eq "true") {
-          Write-Host "Creating installer..."
-          
+          $config = '${{ inputs.config_json }}' | ConvertFrom-Json
           $installerContent = @"
-!define PRODUCT_NAME "$($config.branding.PRODUCT_NAME)"
-!define PRODUCT_VERSION "1.0.0"
-!define PRODUCT_PUBLISHER "$($config.branding.PRODUCT_NAME)"
-SetCompressor lzma
-RequestExecutionLevel admin
-Name "`$!{PRODUCT_NAME}`"
-OutFile "$($executableName)-installer.exe"
-InstallDir "`$PROGRAMFILES\`$!{PRODUCT_NAME}`"
-Section "MainSection" SEC01
-  SetOutPath "`$INSTDIR`"
-  File "$finalExePath"
-  CreateDirectory "`$SMPROGRAMS\`$!{PRODUCT_NAME}`"
-  CreateShortCut "`$SMPROGRAMS\`$!{PRODUCT_NAME}\`$!{PRODUCT_NAME}.lnk`" "`$INSTDIR\$executableName.exe`"
-  CreateShortCut "`$DESKTOP\`$!{PRODUCT_NAME}.lnk`" "`$INSTDIR\$executableName.exe`"
-  WriteUninstaller "`$INSTDIR\Uninstall.exe`"
-SectionEnd
-Section "Uninstall"
-  Delete "`$INSTDIR\$executableName.exe`"
-  Delete "`$INSTDIR\Uninstall.exe`"
-  Delete "`$SMPROGRAMS\`$!{PRODUCT_NAME}\`$!{PRODUCT_NAME}.lnk`"
-  Delete "`$DESKTOP\`$!{PRODUCT_NAME}.lnk`"
-  RMDir "`$SMPROGRAMS\`$!{PRODUCT_NAME}`"
-  RMDir "`$INSTDIR`"
-SectionEnd
-"@
-          
+        !define PRODUCT_NAME "$($config.branding.PRODUCT_NAME)"
+        !define PRODUCT_PUBLISHER "$($config.branding.PRODUCT_NAME)"
+        SetCompressor lzma
+        RequestExecutionLevel admin
+        Name "`$!{PRODUCT_NAME}`"
+        OutFile "$($executableName)-installer.exe"
+        InstallDir "`$PROGRAMFILES\`$!{PRODUCT_NAME}`"
+        Section "MainSection" SEC01
+          SetOutPath "`$INSTDIR`"
+          File "$finalExePath"
+          WriteUninstaller "`$INSTDIR\Uninstall.exe`"
+        SectionEnd
+        Section "Uninstall"
+          Delete "`$INSTDIR\$executableName.exe`"
+          Delete "`$INSTDIR\Uninstall.exe`"
+          RMDir "`$INSTDIR`"
+        SectionEnd
+        "@
           $installerContent | Out-File -FilePath "installer.nsi" -Encoding UTF8
-          
           & "C:\Program Files (x86)\NSIS\makensis.exe" "installer.nsi"
-          
-          if ($LASTEXITCODE -eq 0) {
-            Write-Host "[SUCCESS] Installer created successfully"
-          } else {
-            Write-Host "⚠️ Installer creation failed, but continuing..."
-          }
+          if ($LASTEXITCODE -eq 0) { Write-Host "[SUCCESS] Installer created" } else { Write-Host "⚠️ Installer creation failed" }
         }
-        
-        Write-Host "[SUCCESS] Artifacts prepared successfully"
         
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
