@@ -226,7 +226,7 @@ jobs:
         
         New-Item -Path "src\ui" -ItemType Directory -Force -ErrorAction SilentlyContinue | Out-Null
         $inlineContent = @"
-// Minimal inline module for compilation
+
 #[inline]
 pub fn get_index() -> String { r#"<html><body>RustDesk Client</body></html>"#.to_string() }
 #[inline]
