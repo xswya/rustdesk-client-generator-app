@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
-  base: './', // 使用相对路径，更适合生产环境部署
+  base: '/rustdesk-client-generator-app/', // 使用相对路径，更适合生产环境部署
   resolve: {
     alias: {
       "@": new URL('./src', import.meta.url).pathname,
