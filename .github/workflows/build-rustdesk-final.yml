@@ -150,11 +150,6 @@ jobs:
           $config = '${{ inputs.config_json }}' | ConvertFrom-Json
           
           Write-Host "[DEBUG] Configuration parsed successfully"
-          Write-Host "[DEBUG] Server RENDEZVOUS_SERVER: '$($config.server.RENDEZVOUS_SERVER)'"
-          Write-Host "[DEBUG] Server RS_PUB_KEY: '$($config.server.RS_PUB_KEY)'"
-          Write-Host "[DEBUG] Branding APP_NAME: '$($config.branding.APP_NAME)'"
-          Write-Host "[DEBUG] Branding PRODUCT_NAME: '$($config.branding.PRODUCT_NAME)'"
-          
         } catch {
           Write-Host "[ERROR] Failed to parse configuration JSON: $($_.Exception.Message)"
           exit 1
@@ -200,23 +195,19 @@ jobs:
         if (Test-Path "src\config.rs") {
           $configSize = (Get-Item "src\config.rs").Length
           Write-Host "[SUCCESS] config.rs created (size: $configSize bytes)"
-          Write-Host "[DEBUG] config.rs content:"
-          Get-Content "src\config.rs" | Write-Host
         } else {
           Write-Host "[ERROR] Failed to create config.rs"
           exit 1
         }
         
-        # Update Cargo.toml carefully - only update if different from rustdesk
+        # Update Cargo.toml carefully
         if (Test-Path "Cargo.toml") {
           $cargoContent = Get-Content "Cargo.toml" -Raw
           
           if ($config.branding.APP_NAME -ne "rustdesk") {
-            # Update package name
             $cargoContent = $cargoContent -replace 'name = "rustdesk"', "name = `"$($config.branding.APP_NAME)`""
             Write-Host "[SUCCESS] Updated package name in Cargo.toml"
             
-            # Update default-run target to match new package name
             $cargoContent = $cargoContent -replace 'default-run = "rustdesk"', "default-run = `"$($config.branding.APP_NAME)`""
             Write-Host "[SUCCESS] Updated default-run target in Cargo.toml"
           }
@@ -233,47 +224,22 @@ jobs:
         
         cd "$env:GITHUB_WORKSPACE\rustdesk"
         
-        # Create minimal inline.rs as fallback
         New-Item -Path "src\ui" -ItemType Directory -Force -ErrorAction SilentlyContinue | Out-Null
         $inlineContent = @"
 // Minimal inline module for compilation
 #[inline]
-pub fn get_index() -> String {
-    r#"<html><head><title>RustDesk</title></head><body><h1>RustDesk Client</h1></body></html>"#.to_string()
-}
-
+pub fn get_index() -> String { r#"<html><body>RustDesk Client</body></html>"#.to_string() }
 #[inline]
-pub fn get_remote() -> String {
-    r#"<html><head><title>Remote Control</title></head><body><h1>Remote Control</h1></body></html>"#.to_string()
-}
-
+pub fn get_remote() -> String { r#"<html><body>Remote Control</body></html>"#.to_string() }
 #[inline]
-pub fn get_install() -> String {
-    r#"<html><head><title>Installation</title></head><body><h1>Installation</h1></body></html>"#.to_string()
-}
-
+pub fn get_install() -> String { r#"<html><body>Installation</body></html>"#.to_string() }
 #[inline]
-pub fn get_chatbox() -> String {
-    r#"<html><head><title>Chat</title></head><body><h1>Chat</h1></body></html>"#.to_string()
-}
-
+pub fn get_chatbox() -> String { r#"<html><body>Chat</body></html>"#.to_string() }
 #[inline]
-pub fn get_cm() -> String {
-    r#"<html><head><title>Connection Manager</title></head><body><h1>Connection Manager</h1></body></html>"#.to_string()
-}
+pub fn get_cm() -> String { r#"<html><body>Connection Manager</body></html>"#.to_string() }
 "@
         $inlineContent | Out-File -FilePath "src\ui\inline.rs" -Encoding UTF8
         Write-Host "[SUCCESS] Created minimal inline.rs module"
-        
-        # Verify that inline.rs was created
-        if (Test-Path "src\ui\inline.rs") {
-          Write-Host "[SUCCESS] inline.rs module verified"
-          $inlineSize = (Get-Item "src\ui\inline.rs").Length
-          Write-Host "inline.rs size: $inlineSize bytes"
-        } else {
-          Write-Host "[ERROR] inline.rs module was not created"
-          exit 1
-        }
         
     - name: Build RustDesk
       shell: powershell
@@ -282,7 +248,6 @@ pub fn get_cm() -> String {
         
         cd "$env:GITHUB_WORKSPACE\rustdesk"
         
-        # Set environment variables for build
         $env:VCPKG_ROOT = "C:\vcpkg"
         $env:VCPKG_DEFAULT_TRIPLET = "x64-windows-static"
         $env:LIBCLANG_PATH = "$env:PROGRAMFILES\LLVM\bin"
@@ -324,98 +289,52 @@ pub fn get_cm() -> String {
         
         Write-Host "Looking for executable in: $buildDir"
         
-        # Find the built executable - search in order of likelihood
-        $possibleExes = @(
-          "$buildDir\$($config.branding.APP_NAME).exe",
-          "$buildDir\rustdesk.exe",
-          "$buildDir\RustDesk.exe"
-        )
-        
-        # Add fallback: any .exe file in the build directory
-        $allExes = Get-ChildItem $buildDir -Filter "*.exe" -ErrorAction SilentlyContinue
-        foreach ($exe in $allExes) {
-          $fullPath = "$buildDir\$($exe.Name)"
-          if ($fullPath -notin $possibleExes) {
-            $possibleExes += $fullPath
-          }
-        }
-        
-        $builtExecutable = ""
-        foreach ($exe in $possibleExes) {
-          if (Test-Path $exe) {
-            $builtExecutable = $exe
-            Write-Host "[SUCCESS] Found executable: $exe"
-            break
-          }
-        }
+        $builtExecutable = Get-ChildItem "$buildDir\*.exe" | Where-Object { $_.Name -like "*rustdesk*" -or $_.Name -like "*$($config.branding.APP_NAME)*" } | Select-Object -First 1
         
         if (-not $builtExecutable) {
-          Write-Host "[ERROR] No executable found. Available files in ${buildDir}:"
-          Get-ChildItem $buildDir -Filter "*.exe" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "  $($_.Name)" }
+          Write-Host "[ERROR] No executable found in ${buildDir}"
           exit 1
         }
+
+        Write-Host "[SUCCESS] Found executable: $($builtExecutable.FullName)"
         
-        # Copy with custom name
-        $finalExe = "$buildDir\$executableName.exe"
-        if ($builtExecutable -ne $finalExe) {
-          Copy-Item $builtExecutable $finalExe -Force
-          Write-Host "[SUCCESS] Copied executable to: $finalExe"
-        }
-        
-        # Test the executable quickly to verify it can start
-        Write-Host "[TEST] Testing executable startup..."
-        try {
-          # Try to run with --help to see if it starts
-          $testOutput = & $finalExe --help 2>&1 | Out-String
-          if ($LASTEXITCODE -eq 0 -or $testOutput -match "rustdesk|RustDesk|help|usage") {
-            Write-Host "[SUCCESS] Executable appears to be working (help output received)"
-          } else {
-            Write-Host "[WARNING] Executable test inconclusive. Exit code: $LASTEXITCODE"
-            Write-Host "[WARNING] Output: $testOutput"
-          }
-        } catch {
-          Write-Host "[WARNING] Could not test executable: $($_.Exception.Message)"
-        }
+        $finalExePath = Join-Path $builtExecutable.DirectoryName "$executableName.exe"
+        Copy-Item $builtExecutable.FullName $finalExePath -Force
+        Write-Host "[SUCCESS] Copied executable to: $finalExePath"
         
         # Create installer if requested
         if ("${{ inputs.create_installer }}" -eq "true") {
           Write-Host "Creating installer..."
           
-          # Create installer script file
-          $installerContent = @(
-            "!define PRODUCT_NAME `"$($config.branding.PRODUCT_NAME)`"",
-            "!define PRODUCT_VERSION `"1.0.0`"",
-            "!define PRODUCT_PUBLISHER `"$($config.branding.PRODUCT_NAME)`"",
-            "",
-            "SetCompressor lzma",
-            "RequestExecutionLevel admin",
-            "",
-            "Name `"`${PRODUCT_NAME}`"",
-            "OutFile `"$executableName-installer.exe`"",
-            "InstallDir `"`$PROGRAMFILES\`${PRODUCT_NAME}`"",
-            "",
-            "Section `"MainSection`" SEC01",
-            "  SetOutPath `"`$INSTDIR`"",
-            "  File `"$buildDir\$executableName.exe`"",
-            "  CreateDirectory `"`$SMPROGRAMS\`${PRODUCT_NAME}`"",
-            "  CreateShortCut `"`$SMPROGRAMS\`${PRODUCT_NAME}\`${PRODUCT_NAME}.lnk`" `"`$INSTDIR\$executableName.exe`"",
-            "  CreateShortCut `"`$DESKTOP\`${PRODUCT_NAME}.lnk`" `"`$INSTDIR\$executableName.exe`"",
-            "  WriteUninstaller `"`$INSTDIR\Uninstall.exe`"",
-            "SectionEnd",
-            "",
-            "Section `"Uninstall`"",
-            "  Delete `"`$INSTDIR\$executableName.exe`"",
-            "  Delete `"`$INSTDIR\Uninstall.exe`"",
-            "  Delete `"`$SMPROGRAMS\`${PRODUCT_NAME}\`${PRODUCT_NAME}.lnk`"",
-            "  Delete `"`$DESKTOP\`${PRODUCT_NAME}.lnk`"",
-            "  RMDir `"`$SMPROGRAMS\`${PRODUCT_NAME}`"",
-            "  RMDir `"`$INSTDIR`"",
-            "SectionEnd"
-          )
+          $installerContent = @"
+!define PRODUCT_NAME "$($config.branding.PRODUCT_NAME)"
+!define PRODUCT_VERSION "1.0.0"
+!define PRODUCT_PUBLISHER "$($config.branding.PRODUCT_NAME)"
+SetCompressor lzma
+RequestExecutionLevel admin
+Name "`$!{PRODUCT_NAME}`"
+OutFile "$($executableName)-installer.exe"
+InstallDir "`$PROGRAMFILES\`$!{PRODUCT_NAME}`"
+Section "MainSection" SEC01
+  SetOutPath "`$INSTDIR`"
+  File "$finalExePath"
+  CreateDirectory "`$SMPROGRAMS\`$!{PRODUCT_NAME}`"
+  CreateShortCut "`$SMPROGRAMS\`$!{PRODUCT_NAME}\`$!{PRODUCT_NAME}.lnk`" "`$INSTDIR\$executableName.exe`"
+  CreateShortCut "`$DESKTOP\`$!{PRODUCT_NAME}.lnk`" "`$INSTDIR\$executableName.exe`"
+  WriteUninstaller "`$INSTDIR\Uninstall.exe`"
+SectionEnd
+Section "Uninstall"
+  Delete "`$INSTDIR\$executableName.exe`"
+  Delete "`$INSTDIR\Uninstall.exe`"
+  Delete "`$SMPROGRAMS\`$!{PRODUCT_NAME}\`$!{PRODUCT_NAME}.lnk`"
+  Delete "`$DESKTOP\`$!{PRODUCT_NAME}.lnk`"
+  RMDir "`$SMPROGRAMS\`$!{PRODUCT_NAME}`"
+  RMDir "`$INSTDIR`"
+SectionEnd
+"@
           
           $installerContent | Out-File -FilePath "installer.nsi" -Encoding UTF8
           
-          # Compile installer
           & "C:\Program Files (x86)\NSIS\makensis.exe" "installer.nsi"
           
           if ($LASTEXITCODE -eq 0) {
@@ -432,7 +351,7 @@ pub fn get_cm() -> String {
       with:
         name: rustdesk-client-${{ inputs.executable_name }}
         path: |
-          rustdesk/target/debug/*.exe
-          rustdesk/target/release/*.exe
-          rustdesk/*.exe
+          rustdesk/target/debug/${{ inputs.executable_name }}.exe
+          rustdesk/target/release/${{ inputs.executable_name }}.exe
+          rustdesk/${{ inputs.executable_name }}-installer.exe
         retention-days: 7
