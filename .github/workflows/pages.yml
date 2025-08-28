@@ -1,0 +1,53 @@
+# .github/workflows/pages.yml
+
+name: Deploy to GitHub Pages
+
+# 触发条件：当代码被推送到 main 分支时
+on:
+  push:
+    branches: [ "main" ]
+  # 允许你手动在 Actions 标签页中触发此工作流
+  workflow_dispatch:
+
+# 权限设置：授予工作流写入 GitHub Pages 的权限
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  # 构建任务
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm install
+      - name: Build
+        run: npm run build
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          # 从 'dist' 目录上传
+          path: './dist'
+  
+  # 部署任务
+  deploy:
+    # 需要在 build 任务成功后运行
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
