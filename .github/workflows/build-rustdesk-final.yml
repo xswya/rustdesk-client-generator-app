@@ -163,23 +163,41 @@ jobs:
       shell: powershell
       run: |
         Write-Host "=== Generating inline UI module ==="
+        
         cd "$env:GITHUB_WORKSPACE\rustdesk"
+        
+        # 修正：为 r# 后面的字符串添加了正确的双引号
         $inlineContentLines = @(
           "// Minimal inline module for compilation",
           "#[inline]",
-          "pub fn get_index() -> String { r#`<html><body>RustDesk Client</body></html>`"#.to_string() }",
+          "pub fn get_index() -> String { r#`"<html><body>RustDesk Client</body></html>`"#.to_string() }",
+          "",
           "#[inline]",
-          "pub fn get_remote() -> String { r#`<html><body>Remote Control</body></html>`"#.to_string() }",
+          "pub fn get_remote() -> String { r#`"<html><body>Remote Control</body></html>`"#.to_string() }",
+          "",
           "#[inline]",
-          "pub fn get_install() -> String { r#`<html><body>Installation</body></html>`"#.to_string() }",
+          "pub fn get_install() -> String { r#`"<html><body>Installation</body></html>`"#.to_string() }",
+          "",
           "#[inline]",
-          "pub fn get_chatbox() -> String { r#`<html><body>Chat</body></html>`"#.to_string() }",
+          "pub fn get_chatbox() -> String { r#`"<html><body>Chat</body></html>`"#.to_string() }",
+          "",
           "#[inline]",
-          "pub fn get_cm() -> String { r#`<html><body>Connection Manager</body></html>`"#.to_string() }"
+          "pub fn get_cm() -> String { r#`"<html><body>Connection Manager</body></html>`"#.to_string() }"
         )
-        $inlineContentLines | Out-File -FilePath "src\ui\inline.rs" -Encoding UTF8
-        if (Test-Path "src\ui\inline.rs") { Write-Host "[SUCCESS] inline.rs module created and verified" } else { Write-Host "[ERROR] inline.rs module was not created"; exit 1 }
 
+        # 将数组内容写入文件
+        $inlineContentLines | Out-File -FilePath "src\ui\inline.rs" -Encoding UTF8
+        Write-Host "[SUCCESS] Created inline.rs module from string array"
+        
+        # 验证文件是否已创建
+        if (Test-Path "src\ui\inline.rs") {
+          Write-Host "[SUCCESS] inline.rs module verified"
+          $inlineSize = (Get-Item "src\ui\inline.rs").Length
+          Write-Host "inline.rs size: $inlineSize bytes"
+        } else {
+          Write-Host "[ERROR] inline.rs module was not created"
+          exit 1
+        }
     - name: Build RustDesk
       shell: powershell
       run: |
